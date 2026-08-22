@@ -5,15 +5,31 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 // --------------------
-// POIs
+// LOAD DATA
 // --------------------
 
-fetch("./data/pois.json")
-  .then((response) => response.json())
-  .then((data) => {
-    console.log("POIs loaded:", data);
+Promise.all([
+  fetch("./data/paths.json").then((response) => response.json()),
+  fetch("./data/pois.json").then((response) => response.json()),
+])
 
-    L.geoJSON(data, {
+  .then(([paths, pois]) => {
+    // --------------------
+    // DISPLAY PATHS
+    // --------------------
+
+    L.geoJSON(paths, {
+      style: {
+        color: "blue",
+        weight: 4,
+      },
+    }).addTo(map);
+
+    // --------------------
+    // DISPLAY POIs
+    // --------------------
+
+    L.geoJSON(pois, {
       pointToLayer: function (feature, latlng) {
         return L.marker(latlng);
       },
@@ -22,82 +38,89 @@ fetch("./data/pois.json")
         const p = feature.properties || {};
 
         layer.bindPopup(`
-                    <strong>${p.name || "Unnamed"}</strong><br>
-                    ID: ${p.id || "N/A"}<br>
-                    Type: ${p.type || "N/A"}
-                `);
-      },
-    }).addTo(map);
-  })
-  .catch((error) => {
-    console.error("POI ERROR:", error);
-  });
-
-// --------------------
-// PATHS
-// --------------------
-
-fetch("./data/paths.json")
-  .then((response) => response.json())
-  .then((data) => {
-    console.log("Paths loaded:", data);
-
-    const pathLayer = L.geoJSON(data, {
-      style: function (feature) {
-        return {
-          weight: 5,
-        };
-      },
-
-      onEachFeature: function (feature, layer) {
-        const p = feature.properties || {};
-
-        layer.bindPopup(`
-                    <strong>${p.name || "Unnamed Path"}</strong><br>
-                    ID: ${p.id || "N/A"}<br>
-                    Type: ${p.type || "N/A"}
-                `);
+          <strong>${p.name || "Unnamed"}</strong><br>
+          ID: ${p.id || "N/A"}<br>
+          Type: ${p.type || "N/A"}
+        `);
       },
     }).addTo(map);
 
-    map.fitBounds(pathLayer.getBounds());
+    // --------------------
+    // BUILD GRAPH
+    // --------------------
+
+    const nodes = buildNodes(paths);
+
+    const edges = buildEdges(paths, nodes);
+
+    // --------------------
+    // CHECK CONNECTIVITY
+    // --------------------
+
+    checkGraphConnectivity(nodes, edges);
+
+    // --------------------
+    // BUILD POI NODES
+    // --------------------
+
+    const poiNodes = buildPoiNodes(pois, nodes);
+
+    console.log("POI NODES");
+    console.log(poiNodes);
+
+    const poiConnections = connectPoiToGraph(poiNodes, nodes);
+
+    console.log("POI CONNECTIONS");
+
+    poiConnections.forEach((connection) => {
+      console.log(
+        `${connection.poiName} (${connection.poiId}) → ` +
+          `${connection.nodeId} | ` +
+          `${connection.distance.toFixed(2)}m`,
+      );
+    });
+
+    const poiEdges = buildPoiEdges(poiConnections);
+
+    console.log("POI EDGES");
+
+    poiEdges.forEach((edge) => {
+      console.log(
+        `${edge.from} → ${edge.to} | ` + `${edge.distance.toFixed(2)}m`,
+      );
+    });
+
+    // --------------------
+    // GRAPH NODES
+    // --------------------
+
+    console.log("GRAPH NODES");
+
+    nodes.forEach((node) => {
+      console.log(
+        `${node.id} | ${node.type} | ` +
+          `${node.coordinate.join(", ")} | ` +
+          `Paths: ${node.connectedPaths.join(", ")}`,
+      );
+    });
+
+    // --------------------
+    // GRAPH EDGES
+    // --------------------
+
+    console.log("GRAPH EDGES");
+
+    edges.forEach((edge) => {
+      console.log(
+        `${edge.from} → ${edge.to} | ` +
+          `${edge.distance.toFixed(2)}m | ` +
+          `${edge.pathId}`,
+      );
+    });
+
+    console.log("Total edges:", edges.length);
   })
+
   .catch((error) => {
-    console.error("PATH ERROR:", error);
-  });
-
-fetch("./data/paths.json")
-  .then((response) => response.json())
-  .then((data) => {
-    const coordinateMap = new Map();
-
-    data.features.forEach((feature) => {
-      const pathId = feature.properties?.id;
-      const coordinates = feature.geometry.coordinates;
-
-      coordinates.forEach((coordinate) => {
-        const key = coordinate.join(",");
-
-        if (!coordinateMap.has(key)) {
-          coordinateMap.set(key, []);
-        }
-
-        coordinateMap.get(key).push(pathId);
-      });
-    });
-
-    coordinateMap.forEach((paths, coordinate) => {
-      if (paths.length > 1) {
-        const [lng, lat] = coordinate.split(",").map(Number);
-
-        L.circleMarker([lat, lng], {
-          radius: 6,
-          weight: 2,
-        }).addTo(map).bindPopup(`
-                    <strong>Intersection</strong><br>
-                    Coordinate: ${coordinate}<br>
-                    Connected paths: ${paths.join(", ")}
-                `);
-      }
-    });
+    console.error("ERROR:", error);
   });
