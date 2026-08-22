@@ -107,6 +107,7 @@ function buildEdges(paths, nodes) {
 
   paths.features.forEach((feature) => {
     const pathId = feature.properties?.id;
+    const pathType = feature.properties?.type;
     const coordinates = feature.geometry.coordinates;
 
     let pathNodes = [];
@@ -145,7 +146,7 @@ function buildEdges(paths, nodes) {
         (coordinate) => coordinate.join(",") === toNode.coordinate.join(","),
       );
 
-      // Calculate distance along the actual LineString
+      // Calculate distance along actual LineString
       let distance = 0;
 
       for (let j = fromIndex + 1; j <= toIndex; j++) {
@@ -153,7 +154,7 @@ function buildEdges(paths, nodes) {
       }
 
       // --------------------------------
-      // Add BOTH directions
+      // Add forward edge
       // --------------------------------
 
       edges.push({
@@ -161,13 +162,19 @@ function buildEdges(paths, nodes) {
         to: toNode.id,
         distance: distance,
         pathId: pathId,
+        type: pathType,
       });
+
+      // --------------------------------
+      // Add reverse edge
+      // --------------------------------
 
       edges.push({
         from: toNode.id,
         to: fromNode.id,
         distance: distance,
         pathId: pathId,
+        type: pathType,
       });
     }
   });
@@ -302,3 +309,12 @@ function buildPoiEdges(poiConnections) {
 
   return edges;
 }
+
+export {
+  buildNodes,
+  buildEdges,
+  checkGraphConnectivity,
+  buildPoiNodes,
+  connectPoiToGraph,
+  buildPoiEdges,
+};

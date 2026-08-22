@@ -1,4 +1,4 @@
-function dijkstra(nodes, edges, startId, endId) {
+function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
   const distances = {};
   const previous = {};
   const unvisited = new Set();
@@ -31,6 +31,17 @@ function dijkstra(nodes, edges, startId, endId) {
     const currentEdges = edges.filter((edge) => edge.from === current);
 
     for (const edge of currentEdges) {
+      // ----------------------------------------
+      // ROUTING MODE FILTER
+      // ----------------------------------------
+
+      if (mode === "vehicle" && edge.type !== "vehicle") {
+        continue;
+      }
+
+      // Pedestrians can use both pedestrian
+      // and vehicle paths, so no filtering needed.
+
       if (!unvisited.has(edge.to)) continue;
 
       const newDistance = distances[current] + edge.distance;
@@ -59,3 +70,5 @@ function dijkstra(nodes, edges, startId, endId) {
     distance: distances[endId],
   };
 }
+
+export { dijkstra };
