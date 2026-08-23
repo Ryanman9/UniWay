@@ -112,9 +112,9 @@ function buildEdges(paths, nodes) {
 
     let pathNodes = [];
 
-    // --------------------------------
-    // Find every node on this path
-    // --------------------------------
+    // ==========================================================
+    // FIND EVERY NODE ON THIS PATH
+    // ==========================================================
 
     coordinates.forEach((coordinate) => {
       const key = coordinate.join(",");
@@ -125,18 +125,25 @@ function buildEdges(paths, nodes) {
       }
     });
 
-    // Remove accidental duplicates
+    // ==========================================================
+    // REMOVE DUPLICATES
+    // ==========================================================
+
     pathNodes = pathNodes.filter((node, index) => {
       return index === 0 || node.id !== pathNodes[index - 1].id;
     });
 
-    // --------------------------------
-    // Create edges between consecutive nodes
-    // --------------------------------
+    // ==========================================================
+    // CREATE EDGES BETWEEN CONSECUTIVE NODES
+    // ==========================================================
 
     for (let i = 0; i < pathNodes.length - 1; i++) {
       const fromNode = pathNodes[i];
       const toNode = pathNodes[i + 1];
+
+      // --------------------------------------------------------
+      // FIND NODE POSITIONS IN ORIGINAL LINESTRING
+      // --------------------------------------------------------
 
       const fromIndex = coordinates.findIndex(
         (coordinate) => coordinate.join(",") === fromNode.coordinate.join(","),
@@ -146,35 +153,63 @@ function buildEdges(paths, nodes) {
         (coordinate) => coordinate.join(",") === toNode.coordinate.join(","),
       );
 
-      // Calculate distance along actual LineString
-      let distance = 0;
-
-      for (let j = fromIndex + 1; j <= toIndex; j++) {
-        distance += calculateDistance(coordinates[j - 1], coordinates[j]);
+      if (fromIndex === -1 || toIndex === -1) {
+        continue;
       }
 
-      // --------------------------------
-      // Add forward edge
-      // --------------------------------
+      // ========================================================
+      // EXACT EDGE GEOMETRY
+      // ========================================================
+
+      const edgeCoordinates = coordinates.slice(fromIndex, toIndex + 1);
+
+      // ========================================================
+      // CALCULATE DISTANCE ALONG ACTUAL GEOMETRY
+      // ========================================================
+
+      let distance = 0;
+
+      for (let j = 1; j < edgeCoordinates.length; j++) {
+        distance += calculateDistance(
+          edgeCoordinates[j - 1],
+          edgeCoordinates[j],
+        );
+      }
+
+      // ========================================================
+      // FORWARD EDGE
+      // ========================================================
 
       edges.push({
         from: fromNode.id,
         to: toNode.id,
-        distance: distance,
-        pathId: pathId,
+
+        distance,
+
+        pathId,
+
         type: pathType,
+
+        // Exact geometry for this edge
+        coordinates: edgeCoordinates,
       });
 
-      // --------------------------------
-      // Add reverse edge
-      // --------------------------------
+      // ========================================================
+      // REVERSE EDGE
+      // ========================================================
 
       edges.push({
         from: toNode.id,
         to: fromNode.id,
-        distance: distance,
-        pathId: pathId,
+
+        distance,
+
+        pathId,
+
         type: pathType,
+
+        // Reverse geometry
+        coordinates: [...edgeCoordinates].reverse(),
       });
     }
   });

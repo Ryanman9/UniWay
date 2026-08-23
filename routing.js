@@ -21,26 +21,18 @@ function getVehicleNodes(nodes, edges) {
 // FIND NEAREST VEHICLE NODE
 // ============================================================
 
-function findNearestVehicleNode(
-  poiNodeId,
-  vehicleNodes,
-  nodes,
-  edges,
-  direction = "from-poi",
-) {
+function findNearestVehicleNode(poiNodeId, vehicleNodes, nodes, edges) {
   let nearestNode = null;
   let nearestRoute = null;
 
   for (const vehicleNode of vehicleNodes) {
-    let route;
-
-    if (direction === "from-poi") {
-      // POI → Vehicle Node
-      route = dijkstra(nodes, edges, poiNodeId, vehicleNode.id, "pedestrian");
-    } else {
-      // Vehicle Node → POI
-      route = dijkstra(nodes, edges, vehicleNode.id, poiNodeId, "pedestrian");
-    }
+    const route = dijkstra(
+      nodes,
+      edges,
+      poiNodeId,
+      vehicleNode.id,
+      "pedestrian",
+    );
 
     if (!route) {
       continue;
@@ -82,7 +74,7 @@ function findVehicleRoute(
   }
 
   // ==========================================================
-  // START
+  // START ACCESS
   // ==========================================================
 
   const startAccess = findNearestVehicleNode(
@@ -90,7 +82,6 @@ function findVehicleRoute(
     vehicleNodes,
     nodes,
     edges,
-    "from-poi",
   );
 
   if (!startAccess) {
@@ -100,7 +91,7 @@ function findVehicleRoute(
   }
 
   // ==========================================================
-  // DESTINATION
+  // DESTINATION ACCESS
   // ==========================================================
 
   const endAccess = findNearestVehicleNode(
@@ -108,7 +99,6 @@ function findVehicleRoute(
     vehicleNodes,
     nodes,
     edges,
-    "to-poi",
   );
 
   if (!endAccess) {
@@ -171,35 +161,57 @@ function findVehicleRoute(
       vehicleRoute.distance +
       endAccess.route.distance,
 
+    // ========================================================
+    // ROUTE SEGMENTS
+    // ========================================================
+
     segments: [
       {
         mode: "pedestrian",
         reason: "access",
+
         path: startAccess.route.path,
+
+        // IMPORTANT
         edges: startAccess.route.edges,
+
         distance: startAccess.route.distance,
       },
 
       {
         mode: "vehicle",
         reason: "vehicle_route",
+
         path: vehicleRoute.path,
+
+        // IMPORTANT
         edges: vehicleRoute.edges,
+
         distance: vehicleRoute.distance,
       },
 
       {
         mode: "pedestrian",
         reason: "destination_access",
+
         path: endAccess.route.path,
+
+        // IMPORTANT
         edges: endAccess.route.edges,
+
         distance: endAccess.route.distance,
       },
     ],
 
+    // ========================================================
+    // COMBINED NODE PATH
+    // ========================================================
+
     path: [
       ...startAccess.route.path,
+
       ...vehicleRoute.path.slice(1),
+
       ...endAccess.route.path.slice(1),
     ],
   };
@@ -227,7 +239,6 @@ function findRoute(
 
   if (!startConnection || !endConnection) {
     console.error("Could not find start or destination POI.");
-
     return null;
   }
 
@@ -269,8 +280,12 @@ function findRoute(
         {
           mode: "pedestrian",
           reason: "walking",
+
           path: result.path,
+
+          // IMPORTANT
           edges: result.edges,
+
           distance: result.distance,
         },
       ],

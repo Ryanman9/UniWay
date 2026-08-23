@@ -35,7 +35,7 @@ function drawRoute(route, nodes, paths, pois, startPoiId, endPoiId) {
   }
 
   // ==========================================================
-  // DRAW EACH ROUTE SEGMENT
+  // DRAW SELECTED ROUTE
   // ==========================================================
 
   route.segments.forEach((segment) => {
@@ -44,25 +44,29 @@ function drawRoute(route, nodes, paths, pois, startPoiId, endPoiId) {
     }
 
     segment.edges.forEach((edge) => {
-      const pathFeature = paths.features.find(
-        (feature) => feature.properties?.id === edge.pathId,
-      );
+      if (!edge.coordinates || edge.coordinates.length < 2) {
+        console.error("Edge has no geometry:", edge.from, edge.to);
 
-      if (!pathFeature) {
-        console.error("Path not found:", edge.pathId);
         return;
       }
 
-      const coordinates = pathFeature.geometry.coordinates.map(
-        ([longitude, latitude]) => [latitude, longitude],
-      );
+      // GeoJSON [longitude, latitude]
+      // Leaflet [latitude, longitude]
+
+      const coordinates = edge.coordinates.map(([longitude, latitude]) => [
+        latitude,
+        longitude,
+      ]);
 
       const isVehicle = segment.mode === "vehicle";
 
       L.polyline(coordinates, {
         color: isVehicle ? "red" : "yellow",
-        weight: isVehicle ? 7 : 6,
-        opacity: 1,
+
+        weight: 6,
+
+        opacity: 0.95,
+
         dashArray: isVehicle ? null : "8, 8",
       }).addTo(map);
     });
@@ -102,7 +106,7 @@ function drawRoute(route, nodes, paths, pois, startPoiId, endPoiId) {
     .bindPopup(`<strong>Destination:</strong> ${endPoi.properties.name}`);
 
   // ==========================================================
-  // LOG ROUTE INFORMATION
+  // ROUTE INFORMATION
   // ==========================================================
 
   console.log(`ROUTE: ${startPoi.properties.name} → ${endPoi.properties.name}`);
@@ -167,14 +171,15 @@ Promise.all([
 
     const edges = buildEdges(paths, nodes);
 
-    console.log("EDGES WITH TYPES");
+    console.log("========== EDGE GEOMETRY ==========");
 
     edges.forEach((edge) => {
       console.log(
         `${edge.from} → ${edge.to} | ` +
-          `${edge.distance.toFixed(2)}m | ` +
           `${edge.pathId} | ` +
-          `${edge.type}`,
+          `${edge.type} | ` +
+          `${edge.distance.toFixed(2)}m | ` +
+          `${edge.coordinates.length} coordinates`,
       );
     });
 
@@ -256,7 +261,7 @@ Promise.all([
     // ========================================================
 
     if (route) {
-      drawRoute(route, nodes, paths, pois, startPoi, endPoi);
+      drawRoute(route, nodes, paths, pois, startPoiId, endPoiId);
     }
 
     // ========================================================
