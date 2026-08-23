@@ -176,6 +176,7 @@ function findVehicleRoute(
         mode: "pedestrian",
         reason: "access",
         path: startAccess.route.path,
+        edges: startAccess.route.edges,
         distance: startAccess.route.distance,
       },
 
@@ -183,6 +184,7 @@ function findVehicleRoute(
         mode: "vehicle",
         reason: "vehicle_route",
         path: vehicleRoute.path,
+        edges: vehicleRoute.edges,
         distance: vehicleRoute.distance,
       },
 
@@ -190,6 +192,7 @@ function findVehicleRoute(
         mode: "pedestrian",
         reason: "destination_access",
         path: endAccess.route.path,
+        edges: endAccess.route.edges,
         distance: endAccess.route.distance,
       },
     ],
@@ -267,6 +270,7 @@ function findRoute(
           mode: "pedestrian",
           reason: "walking",
           path: result.path,
+          edges: result.edges,
           distance: result.distance,
         },
       ],

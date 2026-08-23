@@ -14,11 +14,21 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
 }).addTo(map);
 
+function findPoiByName(pois, searchText) {
+  const query = searchText.trim().toLowerCase();
+
+  return pois.features.find((feature) => {
+    const name = feature.properties?.name?.toLowerCase();
+
+    return name === query;
+  });
+}
+
 // ============================================================
 // DRAW ROUTE
 // ============================================================
 
-function drawRoute(route, nodes, pois, startPoiId, endPoiId) {
+function drawRoute(route, nodes, paths, pois, startPoiId, endPoiId) {
   if (!route) {
     console.error("No route to draw.");
     return;
@@ -29,37 +39,33 @@ function drawRoute(route, nodes, pois, startPoiId, endPoiId) {
   // ==========================================================
 
   route.segments.forEach((segment) => {
-    const coordinates = segment.path
-      .map((nodeId) => {
-        const node = nodes.find((node) => node.id === nodeId);
-
-        if (!node) {
-          console.error("Node not found:", nodeId);
-          return null;
-        }
-
-        // GeoJSON [longitude, latitude]
-        // Leaflet [latitude, longitude]
-
-        return [node.coordinate[1], node.coordinate[0]];
-      })
-      .filter(Boolean);
-
-    if (coordinates.length < 2) {
+    if (!segment.edges || segment.edges.length === 0) {
       return;
     }
 
-    const isVehicle = segment.mode === "vehicle";
+    segment.edges.forEach((edge) => {
+      const pathFeature = paths.features.find(
+        (feature) => feature.properties?.id === edge.pathId,
+      );
 
-    L.polyline(coordinates, {
-      color: isVehicle ? "blue" : "green",
+      if (!pathFeature) {
+        console.error("Path not found:", edge.pathId);
+        return;
+      }
 
-      weight: isVehicle ? 6 : 5,
+      const coordinates = pathFeature.geometry.coordinates.map(
+        ([longitude, latitude]) => [latitude, longitude],
+      );
 
-      opacity: 0.9,
+      const isVehicle = segment.mode === "vehicle";
 
-      dashArray: isVehicle ? null : "8, 8",
-    }).addTo(map);
+      L.polyline(coordinates, {
+        color: isVehicle ? "red" : "yellow",
+        weight: isVehicle ? 7 : 6,
+        opacity: 1,
+        dashArray: isVehicle ? null : "8, 8",
+      }).addTo(map);
+    });
   });
 
   // ==========================================================
@@ -207,14 +213,25 @@ Promise.all([
     // TEST ROUTING
     // ========================================================
 
-    const startPoi = "B008"; // ZHCET
-    const endPoi = "B003"; // Biochemical Dept
+    const startPoiName = "Commerce Dept";
+    const endPoiName = "Physics Dept";
 
     const mode = "vehicle";
 
+    const startPoi = findPoiByName(pois, startPoiName);
+    const endPoi = findPoiByName(pois, endPoiName);
+
+    if (!startPoi || !endPoi) {
+      console.error("Could not find start or destination.");
+      return;
+    }
+
+    const startPoiId = startPoi.properties.id;
+    const endPoiId = endPoi.properties.id;
+
     const route = findRoute(
-      startPoi,
-      endPoi,
+      startPoiId,
+      endPoiId,
       poiConnections,
       nodes,
       edges,
@@ -239,7 +256,7 @@ Promise.all([
     // ========================================================
 
     if (route) {
-      drawRoute(route, nodes, pois, startPoi, endPoi);
+      drawRoute(route, nodes, paths, pois, startPoi, endPoi);
     }
 
     // ========================================================
