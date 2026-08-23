@@ -218,8 +218,8 @@ Promise.all([
     // TEST ROUTING
     // ========================================================
 
-    const startPoiName = "Commerce Dept";
-    const endPoiName = "Physics Dept";
+    const startPoiName = "cs Dept";
+    const endPoiName = "cec";
 
     const mode = "vehicle";
 
