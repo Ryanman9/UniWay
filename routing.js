@@ -1,62 +1,156 @@
 import { dijkstra } from "./dijkstra.js";
 
-function findRoute(
-  startPoiId,
-  endPoiId,
-  poiConnections,
+// ============================================================
+// GET VEHICLE NODES
+// ============================================================
+
+function getVehicleNodes(nodes, edges) {
+  const vehicleNodeIds = new Set();
+
+  edges.forEach((edge) => {
+    if (edge.type === "vehicle") {
+      vehicleNodeIds.add(edge.from);
+      vehicleNodeIds.add(edge.to);
+    }
+  });
+
+  return nodes.filter((node) => vehicleNodeIds.has(node.id));
+}
+
+// ============================================================
+// FIND NEAREST VEHICLE NODE
+// ============================================================
+
+function findNearestVehicleNode(
+  poiNodeId,
+  vehicleNodes,
   nodes,
   edges,
-  mode = "pedestrian",
+  direction = "from-poi",
 ) {
-  // --------------------------------
-  // Find start POI connection
-  // --------------------------------
+  let nearestNode = null;
+  let nearestRoute = null;
 
-  const startConnection = poiConnections.find(
-    (connection) => connection.poiId === startPoiId,
-  );
+  for (const vehicleNode of vehicleNodes) {
+    let route;
 
-  // --------------------------------
-  // Find destination POI connection
-  // --------------------------------
+    if (direction === "from-poi") {
+      // POI → Vehicle Node
+      route = dijkstra(nodes, edges, poiNodeId, vehicleNode.id, "pedestrian");
+    } else {
+      // Vehicle Node → POI
+      route = dijkstra(nodes, edges, vehicleNode.id, poiNodeId, "pedestrian");
+    }
 
-  const endConnection = poiConnections.find(
-    (connection) => connection.poiId === endPoiId,
-  );
+    if (!route) {
+      continue;
+    }
 
-  if (!startConnection || !endConnection) {
-    console.error("Could not find start or destination POI.");
+    if (!nearestRoute || route.distance < nearestRoute.distance) {
+      nearestRoute = route;
+      nearestNode = vehicleNode;
+    }
+  }
+
+  if (!nearestNode) {
     return null;
   }
 
-  // --------------------------------
-  // Run Dijkstra
-  // --------------------------------
+  return {
+    node: nearestNode,
+    route: nearestRoute,
+  };
+}
 
-  const result = dijkstra(
+// ============================================================
+// FIND VEHICLE ROUTE
+// ============================================================
+
+function findVehicleRoute(
+  startPoiId,
+  endPoiId,
+  startConnection,
+  endConnection,
+  nodes,
+  edges,
+) {
+  const vehicleNodes = getVehicleNodes(nodes, edges);
+
+  if (vehicleNodes.length === 0) {
+    console.error("No vehicle nodes found.");
+    return null;
+  }
+
+  // ==========================================================
+  // START
+  // ==========================================================
+
+  const startAccess = findNearestVehicleNode(
+    startConnection.nodeId,
+    vehicleNodes,
     nodes,
     edges,
-    startConnection.nodeId,
-    endConnection.nodeId,
-    mode,
+    "from-poi",
   );
 
-  if (!result) {
-    console.error(`No ${mode} route found.`);
+  if (!startAccess) {
+    console.error("Could not reach a vehicle-accessible road from start POI.");
 
     return null;
   }
 
-  // --------------------------------
-  // Calculate complete distance
-  // --------------------------------
+  // ==========================================================
+  // DESTINATION
+  // ==========================================================
+
+  const endAccess = findNearestVehicleNode(
+    endConnection.nodeId,
+    vehicleNodes,
+    nodes,
+    edges,
+    "to-poi",
+  );
+
+  if (!endAccess) {
+    console.error(
+      "Could not reach destination from a vehicle-accessible road.",
+    );
+
+    return null;
+  }
+
+  // ==========================================================
+  // VEHICLE ROUTE
+  // ==========================================================
+
+  const vehicleRoute = dijkstra(
+    nodes,
+    edges,
+    startAccess.node.id,
+    endAccess.node.id,
+    "vehicle",
+  );
+
+  if (!vehicleRoute) {
+    console.error("No vehicle route between accessible vehicle nodes.");
+
+    return null;
+  }
+
+  // ==========================================================
+  // TOTAL DISTANCE
+  // ==========================================================
 
   const totalDistance =
-    startConnection.distance + result.distance + endConnection.distance;
+    startConnection.distance +
+    startAccess.route.distance +
+    vehicleRoute.distance +
+    endAccess.route.distance +
+    endConnection.distance;
 
-  // --------------------------------
-  // Return route information
-  // --------------------------------
+  // ==========================================================
+  // RESULT
+  // ==========================================================
 
   return {
     startPoi: startPoiId,
@@ -65,14 +159,138 @@ function findRoute(
     startNode: startConnection.nodeId,
     endNode: endConnection.nodeId,
 
-    mode: mode,
+    startVehicleNode: startAccess.node.id,
+    endVehicleNode: endAccess.node.id,
 
-    path: result.path,
+    mode: "vehicle",
 
-    graphDistance: result.distance,
+    totalDistance,
 
-    totalDistance: totalDistance,
+    graphDistance:
+      startAccess.route.distance +
+      vehicleRoute.distance +
+      endAccess.route.distance,
+
+    segments: [
+      {
+        mode: "pedestrian",
+        reason: "access",
+        path: startAccess.route.path,
+        distance: startAccess.route.distance,
+      },
+
+      {
+        mode: "vehicle",
+        reason: "vehicle_route",
+        path: vehicleRoute.path,
+        distance: vehicleRoute.distance,
+      },
+
+      {
+        mode: "pedestrian",
+        reason: "destination_access",
+        path: endAccess.route.path,
+        distance: endAccess.route.distance,
+      },
+    ],
+
+    path: [
+      ...startAccess.route.path,
+      ...vehicleRoute.path.slice(1),
+      ...endAccess.route.path.slice(1),
+    ],
   };
+}
+
+// ============================================================
+// MAIN ROUTER
+// ============================================================
+
+function findRoute(
+  startPoiId,
+  endPoiId,
+  poiConnections,
+  nodes,
+  edges,
+  mode = "pedestrian",
+) {
+  const startConnection = poiConnections.find(
+    (connection) => connection.poiId === startPoiId,
+  );
+
+  const endConnection = poiConnections.find(
+    (connection) => connection.poiId === endPoiId,
+  );
+
+  if (!startConnection || !endConnection) {
+    console.error("Could not find start or destination POI.");
+
+    return null;
+  }
+
+  // ==========================================================
+  // PEDESTRIAN
+  // ==========================================================
+
+  if (mode === "pedestrian") {
+    const result = dijkstra(
+      nodes,
+      edges,
+      startConnection.nodeId,
+      endConnection.nodeId,
+      "pedestrian",
+    );
+
+    if (!result) {
+      console.error("No pedestrian route found.");
+      return null;
+    }
+
+    return {
+      startPoi: startPoiId,
+      endPoi: endPoiId,
+
+      startNode: startConnection.nodeId,
+      endNode: endConnection.nodeId,
+
+      mode: "pedestrian",
+
+      path: result.path,
+
+      graphDistance: result.distance,
+
+      totalDistance:
+        startConnection.distance + result.distance + endConnection.distance,
+
+      segments: [
+        {
+          mode: "pedestrian",
+          reason: "walking",
+          path: result.path,
+          distance: result.distance,
+        },
+      ],
+    };
+  }
+
+  // ==========================================================
+  // VEHICLE
+  // ==========================================================
+
+  if (mode === "vehicle") {
+    return findVehicleRoute(
+      startPoiId,
+      endPoiId,
+      startConnection,
+      endConnection,
+      nodes,
+      edges,
+    );
+  }
+
+  console.error("Unknown routing mode:", mode);
+
+  return null;
 }
 
 export { findRoute };

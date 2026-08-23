@@ -3,6 +3,10 @@ function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
   const previous = {};
   const unvisited = new Set();
 
+  // --------------------------------
+  // INITIALIZE
+  // --------------------------------
+
   nodes.forEach((node) => {
     distances[node.id] = Infinity;
     previous[node.id] = null;
@@ -11,10 +15,15 @@ function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
 
   distances[startId] = 0;
 
+  // --------------------------------
+  // DIJKSTRA
+  // --------------------------------
+
   while (unvisited.size > 0) {
     let current = null;
     let smallestDistance = Infinity;
 
+    // Find unvisited node with smallest distance
     for (const nodeId of unvisited) {
       if (distances[nodeId] < smallestDistance) {
         smallestDistance = distances[nodeId];
@@ -22,27 +31,47 @@ function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
       }
     }
 
-    if (current === null) break;
+    // No reachable node remaining
+    if (current === null) {
+      break;
+    }
 
-    if (current === endId) break;
+    // Destination reached
+    if (current === endId) {
+      break;
+    }
 
     unvisited.delete(current);
 
-    const currentEdges = edges.filter((edge) => edge.from === current);
+    // --------------------------------
+    // GET ALLOWED EDGES
+    // --------------------------------
 
-    for (const edge of currentEdges) {
-      // ----------------------------------------
-      // ROUTING MODE FILTER
-      // ----------------------------------------
-
-      if (mode === "vehicle" && edge.type !== "vehicle") {
-        continue;
+    const currentEdges = edges.filter((edge) => {
+      if (edge.from !== current) {
+        return false;
       }
 
-      // Pedestrians can use both pedestrian
-      // and vehicle paths, so no filtering needed.
+      // Pedestrians can use both types
+      if (mode === "pedestrian") {
+        return edge.type === "pedestrian" || edge.type === "vehicle";
+      }
 
-      if (!unvisited.has(edge.to)) continue;
+      if (mode === "vehicle") {
+        return edge.type === "vehicle";
+      }
+
+      return false;
+    });
+
+    // --------------------------------
+    // RELAX EDGES
+    // --------------------------------
+
+    for (const edge of currentEdges) {
+      if (!unvisited.has(edge.to)) {
+        continue;
+      }
 
       const newDistance = distances[current] + edge.distance;
 
@@ -53,11 +82,20 @@ function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
     }
   }
 
+  // --------------------------------
+  // NO ROUTE
+  // --------------------------------
+
   if (distances[endId] === Infinity) {
     return null;
   }
 
+  // --------------------------------
+  // RECONSTRUCT ROUTE
+  // --------------------------------
+
   const route = [];
+
   let current = endId;
 
   while (current !== null) {
@@ -68,6 +106,7 @@ function dijkstra(nodes, edges, startId, endId, mode = "pedestrian") {
   return {
     path: route,
     distance: distances[endId],
+    mode: mode,
   };
 }
 

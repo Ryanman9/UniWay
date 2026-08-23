@@ -24,41 +24,47 @@ function drawRoute(route, nodes, pois, startPoiId, endPoiId) {
     return;
   }
 
-  // ----------------------------------------------------------
-  // 1. Convert graph node IDs → Leaflet coordinates
-  // ----------------------------------------------------------
+  // ==========================================================
+  // DRAW EACH ROUTE SEGMENT
+  // ==========================================================
 
-  const routeCoordinates = route.path
-    .map((nodeId) => {
-      const node = nodes.find((node) => node.id === nodeId);
+  route.segments.forEach((segment) => {
+    const coordinates = segment.path
+      .map((nodeId) => {
+        const node = nodes.find((node) => node.id === nodeId);
 
-      if (!node) {
-        console.error("Node not found:", nodeId);
-        return null;
-      }
+        if (!node) {
+          console.error("Node not found:", nodeId);
+          return null;
+        }
 
-      // GeoJSON: [longitude, latitude]
-      // Leaflet: [latitude, longitude]
+        // GeoJSON [longitude, latitude]
+        // Leaflet [latitude, longitude]
 
-      return [node.coordinate[1], node.coordinate[0]];
-    })
-    .filter(Boolean);
+        return [node.coordinate[1], node.coordinate[0]];
+      })
+      .filter(Boolean);
 
-  console.log("ROUTE COORDINATES:", routeCoordinates);
+    if (coordinates.length < 2) {
+      return;
+    }
 
-  // ----------------------------------------------------------
-  // 2. Draw route
-  // ----------------------------------------------------------
+    const isVehicle = segment.mode === "vehicle";
 
-  L.polyline(routeCoordinates, {
-    color: "red",
-    weight: 7,
-    opacity: 0.9,
-  }).addTo(map);
+    L.polyline(coordinates, {
+      color: isVehicle ? "blue" : "green",
 
-  // ----------------------------------------------------------
-  // 3. Find actual POIs
-  // ----------------------------------------------------------
+      weight: isVehicle ? 6 : 5,
+
+      opacity: 0.9,
+
+      dashArray: isVehicle ? null : "8, 8",
+    }).addTo(map);
+  });
+
+  // ==========================================================
+  // FIND POIs
+  // ==========================================================
 
   const startPoi = pois.features.find(
     (feature) => feature.properties.id === startPoiId,
@@ -69,33 +75,35 @@ function drawRoute(route, nodes, pois, startPoiId, endPoiId) {
   );
 
   if (!startPoi || !endPoi) {
-    console.error("Could not find start or destination POI.");
+    console.error("Could not find POIs.");
     return;
   }
 
-  // ----------------------------------------------------------
-  // 4. Start marker
-  // ----------------------------------------------------------
+  // ==========================================================
+  // START MARKER
+  // ==========================================================
 
   L.marker([startPoi.geometry.coordinates[1], startPoi.geometry.coordinates[0]])
     .addTo(map)
     .bindPopup(`<strong>Start:</strong> ${startPoi.properties.name}`);
 
-  // ----------------------------------------------------------
-  // 5. Destination marker
-  // ----------------------------------------------------------
+  // ==========================================================
+  // DESTINATION MARKER
+  // ==========================================================
 
   L.marker([endPoi.geometry.coordinates[1], endPoi.geometry.coordinates[0]])
     .addTo(map)
     .bindPopup(`<strong>Destination:</strong> ${endPoi.properties.name}`);
 
-  // ----------------------------------------------------------
-  // 6. Display distance
-  // ----------------------------------------------------------
+  // ==========================================================
+  // LOG ROUTE INFORMATION
+  // ==========================================================
 
   console.log(`ROUTE: ${startPoi.properties.name} → ${endPoi.properties.name}`);
 
-  console.log(`Graph distance: ${route.graphDistance.toFixed(2)}m`);
+  console.log(`Start vehicle node: ${route.startVehicleNode}`);
+
+  console.log(`End vehicle node: ${route.endVehicleNode}`);
 
   console.log(`Total distance: ${route.totalDistance.toFixed(2)}m`);
 }
@@ -202,7 +210,7 @@ Promise.all([
     const startPoi = "B008"; // ZHCET
     const endPoi = "B003"; // Biochemical Dept
 
-    const mode = "pedestrian";
+    const mode = "vehicle";
 
     const route = findRoute(
       startPoi,
@@ -215,6 +223,16 @@ Promise.all([
 
     console.log("ROUTE RESULT");
     console.log(route);
+
+    if (route) {
+      console.log("========== ROUTE SEGMENTS ==========");
+
+      route.segments.forEach((segment, index) => {
+        console.log(`SEGMENT ${index + 1}`);
+        console.log("MODE:", segment.mode);
+        console.log("PATH:", segment.path);
+      });
+    }
 
     // ========================================================
     // DRAW ROUTE
