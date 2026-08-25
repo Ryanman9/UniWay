@@ -20,8 +20,8 @@ const END_POI_NAME = "Mathematics Dept";
 const ROUTE_MODE = "vehicle";
 
 const ROUTE_COLORS = {
-  vehicle: "#2263f0",
-  pedestrian: "#60a5fa",
+  vehicle: "#f4881f",
+  pedestrian: "#e49444",
   marker: "#eb3838",
 };
 
@@ -153,13 +153,14 @@ function drawRoute(route) {
   // Remove previous route
   // ----------------------------------------------------------
 
-  if (map.getLayer("route-vehicle")) {
-    map.removeLayer("route-vehicle");
-  }
-
-  if (map.getLayer("route-pedestrian")) {
-    map.removeLayer("route-pedestrian");
-  }
+  [
+    "route-vehicle-glow",
+    "route-vehicle",
+    "route-pedestrian-glow",
+    "route-pedestrian",
+  ].forEach((id) => {
+    if (map.getLayer(id)) map.removeLayer(id);
+  });
 
   if (map.getSource("route")) {
     map.removeSource("route");
@@ -175,75 +176,104 @@ function drawRoute(route) {
   });
 
   // ----------------------------------------------------------
-  // Vehicle route
+  // Vehicle route (soft glow underlay + solid orange line, rounded)
   // ----------------------------------------------------------
 
   map.addLayer({
-    id: "route-vehicle",
-
+    id: "route-vehicle-glow",
     type: "line",
-
     source: "route",
-
     filter: ["==", ["get", "mode"], "vehicle"],
-
-    layout: {
-      "line-join": "round",
-      "line-cap": "round",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": "#ffffff",
+      "line-width": 12,
+      "line-opacity": 1,
     },
+  });
 
+  map.addLayer({
+    id: "route-vehicle",
+    type: "line",
+    source: "route",
+    filter: ["==", ["get", "mode"], "vehicle"],
+    layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": ROUTE_COLORS.vehicle,
-
-      "line-width": 7,
-
+      "line-width": 6,
       "line-opacity": 1,
     },
   });
 
   // ----------------------------------------------------------
-  // Pedestrian route
+  // Pedestrian route (dashed orange, same family so the whole
+  // route reads as one continuous path like a nav app)
   // ----------------------------------------------------------
 
   map.addLayer({
-    id: "route-pedestrian",
-
+    id: "route-pedestrian-glow",
     type: "line",
-
     source: "route",
-
     filter: ["==", ["get", "mode"], "pedestrian"],
-
-    layout: {
-      "line-join": "round",
-      "line-cap": "round",
-    },
-
+    layout: { "line-join": "round", "line-cap": "round" },
     paint: {
-      "line-color": ROUTE_COLORS.pedestrian,
-
-      "line-width": 5,
-
-      "line-opacity": 0.95,
-
-      "line-dasharray": [1.5, 1.5],
+      "line-color": "#ffffff",
+      "line-width": 10,
+      "line-opacity": 1,
     },
   });
+
+  map.addLayer({
+    id: "route-pedestrian",
+    type: "line",
+    source: "route",
+    filter: ["==", ["get", "mode"], "pedestrian"],
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": ROUTE_COLORS.pedestrian,
+      "line-width": 4,
+      "line-opacity": 1,
+      "line-dasharray": [2, 1.6],
+    },
+  });
+
+  // ----------------------------------------------------------
+  // Distance card
+  // ----------------------------------------------------------
+
+  showDistanceCard(route.totalDistance);
 }
 
-function createNavigationMarker(coordinate, label) {
+function showDistanceCard(totalDistanceMeters) {
+  const card = document.getElementById("distance-card");
+  const value = document.getElementById("distance-value");
+
+  value.textContent = (totalDistanceMeters / 1000).toFixed(2);
+  card.classList.add("visible");
+}
+
+function createNavigationMarker(coordinate, label, variant = "end") {
   const el = document.createElement("div");
 
-  el.className = "navigation-marker";
-
-  el.innerHTML = `
-    <div class="navigation-marker-dot"></div>
-  `;
+  if (variant === "start") {
+    // Glowing arrow "puck" — mirrors the current-position marker
+    // used by nav apps (Uber/Ola style) at the route's origin.
+    el.className = "position-puck";
+    el.innerHTML = `
+      <div class="position-puck-glow"></div>
+      <div class="position-puck-arrow">
+        <svg viewBox="0 0 24 24" fill="#ff8a00"><path d="M12 2 L20 20 L12 16 L4 20 Z"/></svg>
+      </div>
+    `;
+  } else {
+    el.className = "navigation-marker";
+    el.innerHTML = `<div class="navigation-marker-dot"></div>`;
+  }
 
   const popup = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: true,
-    offset: 14,
+    offset: 18,
     className: "navigation-popup",
   }).setText(label);
 
@@ -273,11 +303,13 @@ function drawNavigationMarkers(startPoi, endPoi) {
   startMarker = createNavigationMarker(
     startPoi.geometry.coordinates,
     `Start: ${startPoi.properties.name}`,
+    "start",
   );
 
   destinationMarker = createNavigationMarker(
     endPoi.geometry.coordinates,
     `Destination: ${endPoi.properties.name}`,
+    "end",
   );
 }
 
@@ -301,22 +333,24 @@ function drawPOIs(pois) {
 
   map.addLayer({
     id: "pois",
-
     type: "circle",
-
     source: "pois",
-
     paint: {
       "circle-radius": 5,
-
-      "circle-color": "#ffffff",
-
-      "circle-stroke-color": "#555555",
-
+      "circle-color": ["coalesce", ["get", "marker-color"], "#ff8a00"],
+      "circle-stroke-color": "#ffffff",
       "circle-stroke-width": 2,
     },
   });
 }
+
+// ============================================================
+// UI CONTROLS
+// ============================================================
+
+document.getElementById("back-btn")?.addEventListener("click", () => {
+  history.length > 1 ? history.back() : window.close();
+});
 
 // ============================================================
 // DISPLAY ROUTE INFO
