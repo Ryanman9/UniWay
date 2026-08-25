@@ -8,300 +8,380 @@ import {
 
 import { findRoute } from "./routing.js";
 
+// ============================================================
+// CONFIG
+// ============================================================
+
 const MAPTILER_KEY = "y3k27rR8H6hT3sAesswC";
+
+const START_POI_NAME = "CS Dept";
+const END_POI_NAME = "CEC";
+
+const ROUTE_MODE = "vehicle";
+
+// ============================================================
+// MAP
+// ============================================================
+
+const CUSTOM_MAP_ID = "01a03944-5ece-74e2-b8c1-56e3a2c22fdf";
 
 const map = new maplibregl.Map({
   container: "map",
 
-  style: `https://api.maptiler.com/maps/streets-v4/style.json?key=${MAPTILER_KEY}`,
+  style: `https://api.maptiler.com/maps/${CUSTOM_MAP_ID}/style.json?key=${MAPTILER_KEY}`,
 
   center: [78.074, 27.916],
 
   zoom: 17,
+
+  bearing: 0,
+
+  pitch: 0,
+
+  attributionControl: true,
 });
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function findPoiByName(pois, searchText) {
   const query = searchText.trim().toLowerCase();
 
   return pois.features.find((feature) => {
-    const name = feature.properties?.name?.toLowerCase();
+    const name = feature.properties?.name;
 
-    return name === query;
+    return name?.trim().toLowerCase() === query;
   });
+}
+
+// ============================================================
+// CREATE ROUTE GEOJSON
+// ============================================================
+
+function createRouteGeoJSON(route) {
+  const vehicleLines = [];
+  const pedestrianLines = [];
+
+  route.segments.forEach((segment) => {
+    if (!segment.edges || segment.edges.length === 0) {
+      return;
+    }
+
+    segment.edges.forEach((edge) => {
+      if (!edge.coordinates || edge.coordinates.length < 2) {
+        console.warn("Edge has no geometry:", edge.from, edge.to);
+
+        return;
+      }
+
+      // Keep every edge as its own LineString
+      if (segment.mode === "vehicle") {
+        vehicleLines.push(edge.coordinates);
+      }
+
+      if (segment.mode === "pedestrian") {
+        pedestrianLines.push(edge.coordinates);
+      }
+    });
+  });
+
+  return {
+    type: "FeatureCollection",
+
+    features: [
+      {
+        type: "Feature",
+
+        properties: {
+          mode: "vehicle",
+        },
+
+        geometry: {
+          type: "MultiLineString",
+          coordinates: vehicleLines,
+        },
+      },
+
+      {
+        type: "Feature",
+
+        properties: {
+          mode: "pedestrian",
+        },
+
+        geometry: {
+          type: "MultiLineString",
+          coordinates: pedestrianLines,
+        },
+      },
+    ],
+  };
 }
 
 // ============================================================
 // DRAW ROUTE
 // ============================================================
 
-// function drawRoute(route, nodes, paths, pois, startPoiId, endPoiId) {
-//   if (!route) {
-//     console.error("No route to draw.");
-//     return;
-//   }
+function drawRoute(route) {
+  const routeGeoJSON = createRouteGeoJSON(route);
 
-//   // ==========================================================
-//   // DRAW SELECTED ROUTE
-//   // ==========================================================
+  // ----------------------------------------------------------
+  // Remove previous route
+  // ----------------------------------------------------------
 
-//   route.segments.forEach((segment) => {
-//     if (!segment.edges || segment.edges.length === 0) {
-//       return;
-//     }
+  if (map.getLayer("route-vehicle")) {
+    map.removeLayer("route-vehicle");
+  }
 
-//     segment.edges.forEach((edge) => {
-//       if (!edge.coordinates || edge.coordinates.length < 2) {
-//         console.error("Edge has no geometry:", edge.from, edge.to);
+  if (map.getLayer("route-pedestrian")) {
+    map.removeLayer("route-pedestrian");
+  }
 
-//         return;
-//       }
+  if (map.getSource("route")) {
+    map.removeSource("route");
+  }
 
-//       // GeoJSON [longitude, latitude]
-//       // Leaflet [latitude, longitude]
+  // ----------------------------------------------------------
+  // Add route source
+  // ----------------------------------------------------------
 
-//       const coordinates = edge.coordinates.map(([longitude, latitude]) => [
-//         latitude,
-//         longitude,
-//       ]);
+  map.addSource("route", {
+    type: "geojson",
+    data: routeGeoJSON,
+  });
 
-//       const isVehicle = segment.mode === "vehicle";
+  // ----------------------------------------------------------
+  // Vehicle route
+  // ----------------------------------------------------------
 
-//       L.polyline(coordinates, {
-//         color: isVehicle ? "red" : "yellow",
+  map.addLayer({
+    id: "route-vehicle",
 
-//         weight: 6,
+    type: "line",
 
-//         opacity: 0.95,
+    source: "route",
 
-//         dashArray: isVehicle ? null : "8, 8",
-//       }).addTo(map);
-//     });
-//   });
+    filter: ["==", ["get", "mode"], "vehicle"],
 
-//   // ==========================================================
-//   // FIND POIs
-//   // ==========================================================
+    layout: {
+      "line-join": "round",
+      "line-cap": "round",
+    },
 
-//   const startPoi = pois.features.find(
-//     (feature) => feature.properties.id === startPoiId,
-//   );
+    paint: {
+      "line-color": "#ef4444",
+      "line-width": 6,
+      "line-opacity": 0.95,
+    },
+  });
 
-//   const endPoi = pois.features.find(
-//     (feature) => feature.properties.id === endPoiId,
-//   );
+  // ----------------------------------------------------------
+  // Pedestrian route
+  // ----------------------------------------------------------
 
-//   if (!startPoi || !endPoi) {
-//     console.error("Could not find POIs.");
-//     return;
-//   }
+  map.addLayer({
+    id: "route-pedestrian",
 
-//   // ==========================================================
-//   // START MARKER
-//   // ==========================================================
+    type: "line",
 
-//   L.marker([startPoi.geometry.coordinates[1], startPoi.geometry.coordinates[0]])
-//     .addTo(map)
-//     .bindPopup(`<strong>Start:</strong> ${startPoi.properties.name}`);
+    source: "route",
 
-//   // ==========================================================
-//   // DESTINATION MARKER
-//   // ==========================================================
+    filter: ["==", ["get", "mode"], "pedestrian"],
 
-//   L.marker([endPoi.geometry.coordinates[1], endPoi.geometry.coordinates[0]])
-//     .addTo(map)
-//     .bindPopup(`<strong>Destination:</strong> ${endPoi.properties.name}`);
+    layout: {
+      "line-join": "round",
+      "line-cap": "round",
+    },
 
-//   // ==========================================================
-//   // ROUTE INFORMATION
-//   // ==========================================================
+    paint: {
+      "line-color": "#facc15",
+      "line-width": 6,
+      "line-opacity": 0.95,
+      "line-dasharray": [2, 2],
+    },
+  });
+}
 
-//   console.log(`ROUTE: ${startPoi.properties.name} → ${endPoi.properties.name}`);
+// ============================================================
+// DRAW POIs
+// ============================================================
 
-//   console.log(`Start vehicle node: ${route.startVehicleNode}`);
+function drawPOIs(pois) {
+  if (map.getLayer("pois")) {
+    map.removeLayer("pois");
+  }
 
-//   console.log(`End vehicle node: ${route.endVehicleNode}`);
+  if (map.getSource("pois")) {
+    map.removeSource("pois");
+  }
 
-//   console.log(`Total distance: ${route.totalDistance.toFixed(2)}m`);
-// }
+  map.addSource("pois", {
+    type: "geojson",
+    data: pois,
+  });
+
+  map.addLayer({
+    id: "pois",
+
+    type: "circle",
+
+    source: "pois",
+
+    paint: {
+      "circle-radius": 5,
+
+      "circle-color": "#ffffff",
+
+      "circle-stroke-color": "#555555",
+
+      "circle-stroke-width": 2,
+    },
+  });
+}
+
+// ============================================================
+// DISPLAY ROUTE INFO
+// ============================================================
+
+function logRouteInfo(route, startPoi, endPoi) {
+  console.log("========== ROUTE ==========");
+
+  console.log(`${startPoi.properties.name} → ${endPoi.properties.name}`);
+
+  console.log("Start vehicle node:", route.startVehicleNode);
+
+  console.log("End vehicle node:", route.endVehicleNode);
+
+  console.log("Total distance:", `${route.totalDistance.toFixed(2)}m`);
+
+  console.log("========== SEGMENTS ==========");
+
+  route.segments.forEach((segment, index) => {
+    console.log(`SEGMENT ${index + 1}`);
+
+    console.log("MODE:", segment.mode);
+
+    console.log("PATH:", segment.path);
+  });
+}
 
 // ============================================================
 // LOAD DATA
 // ============================================================
 
-Promise.all([
-  fetch("./data/paths.json").then((response) => response.json()),
-  fetch("./data/pois.json").then((response) => response.json()),
-])
+async function loadData() {
+  try {
+    const [paths, pois] = await Promise.all([
+      fetch("./data/paths.json").then((response) => response.json()),
 
-  .then(([paths, pois]) => {
-    // ========================================================
-    // DISPLAY PATHS
-    // ========================================================
+      fetch("./data/pois.json").then((response) => response.json()),
+    ]);
 
-    // L.geoJSON(paths, {
-    //   style: function (feature) {
-    //     const type = feature.properties?.type;
+    console.log("Paths loaded:", paths.features.length);
 
-    //     return {
-    //       color: type === "vehicle" ? "blue" : "green",
-    //       weight: type === "vehicle" ? 5 : 3,
-    //     };
-    //   },
-    // }).addTo(map);
+    console.log("POIs loaded:", pois.features.length);
 
-    // ========================================================
-    // DISPLAY POIs
-    // ========================================================
-
-    // L.geoJSON(pois, {
-    //   pointToLayer: function (feature, latlng) {
-    //     return L.marker(latlng);
-    //   },
-
-    //   onEachFeature: function (feature, layer) {
-    //     const p = feature.properties || {};
-
-    //     layer.bindPopup(`
-    //       <strong>${p.name || "Unnamed"}</strong><br>
-    //       ID: ${p.id || "N/A"}<br>
-    //       Type: ${p.type || "N/A"}
-    //     `);
-    //   },
-    // }).addTo(map);
-
-    // ========================================================
-    // BUILD GRAPH
-    // ========================================================
+    // --------------------------------------------------------
+    // Build graph
+    // --------------------------------------------------------
 
     const nodes = buildNodes(paths);
 
     const edges = buildEdges(paths, nodes);
 
-    console.log("========== EDGE GEOMETRY ==========");
+    console.log("Nodes:", nodes.length);
 
-    edges.forEach((edge) => {
-      console.log(
-        `${edge.from} → ${edge.to} | ` +
-          `${edge.pathId} | ` +
-          `${edge.type} | ` +
-          `${edge.distance.toFixed(2)}m | ` +
-          `${edge.coordinates.length} coordinates`,
-      );
-    });
-
-    // ========================================================
-    // CHECK GRAPH
-    // ========================================================
+    console.log("Edges:", edges.length);
 
     checkGraphConnectivity(nodes, edges);
 
-    // ========================================================
-    // BUILD POI NODES
-    // ========================================================
+    // --------------------------------------------------------
+    // Build POI graph connections
+    // --------------------------------------------------------
 
     const poiNodes = buildPoiNodes(pois, nodes);
 
-    console.log("POI NODES");
-    console.log(poiNodes);
-
-    // ========================================================
-    // CONNECT POIs TO GRAPH
-    // ========================================================
-
     const poiConnections = connectPoiToGraph(poiNodes, nodes);
 
-    console.log("POI CONNECTIONS");
+    console.log("POI connections:", poiConnections);
 
-    poiConnections.forEach((connection) => {
-      console.log(
-        `${connection.poiName} (${connection.poiId}) → ` +
-          `${connection.nodeId} | ` +
-          `${connection.distance.toFixed(2)}m`,
-      );
-    });
+    // --------------------------------------------------------
+    // Draw POIs
+    // --------------------------------------------------------
 
-    // ========================================================
-    // TEST ROUTING
-    // ========================================================
+    drawPOIs(pois);
 
-    const startPoiName = "cs Dept";
-    const endPoiName = "cec";
+    // --------------------------------------------------------
+    // Find start and destination
+    // --------------------------------------------------------
 
-    const mode = "vehicle";
+    const startPoi = findPoiByName(pois, START_POI_NAME);
 
-    const startPoi = findPoiByName(pois, startPoiName);
-    const endPoi = findPoiByName(pois, endPoiName);
+    const endPoi = findPoiByName(pois, END_POI_NAME);
 
-    if (!startPoi || !endPoi) {
-      console.error("Could not find start or destination.");
+    if (!startPoi) {
+      console.error(`Start POI not found: "${START_POI_NAME}"`);
+
       return;
     }
 
-    const startPoiId = startPoi.properties.id;
-    const endPoiId = endPoi.properties.id;
+    if (!endPoi) {
+      console.error(`Destination POI not found: "${END_POI_NAME}"`);
+
+      return;
+    }
+
+    console.log("Start:", startPoi.properties.name);
+
+    console.log("Destination:", endPoi.properties.name);
+
+    // --------------------------------------------------------
+    // Find route
+    // --------------------------------------------------------
 
     const route = findRoute(
-      startPoiId,
-      endPoiId,
+      startPoi.properties.id,
+
+      endPoi.properties.id,
+
       poiConnections,
+
       nodes,
+
       edges,
-      mode,
+
+      ROUTE_MODE,
     );
 
-    console.log("ROUTE RESULT");
-    console.log(route);
+    if (!route) {
+      console.error("No route found.");
 
-    if (route) {
-      console.log("========== ROUTE SEGMENTS ==========");
-
-      route.segments.forEach((segment, index) => {
-        console.log(`SEGMENT ${index + 1}`);
-        console.log("MODE:", segment.mode);
-        console.log("PATH:", segment.path);
-      });
+      return;
     }
 
-    // ========================================================
-    // DRAW ROUTE
-    // ========================================================
+    // --------------------------------------------------------
+    // Log route
+    // --------------------------------------------------------
 
-    if (route) {
-      drawRoute(route, nodes, paths, pois, startPoiId, endPoiId);
-    }
+    logRouteInfo(route, startPoi, endPoi);
 
-    // ========================================================
-    // DEBUG GRAPH NODES
-    // ========================================================
+    // --------------------------------------------------------
+    // Draw route
+    // --------------------------------------------------------
 
-    console.log("GRAPH NODES");
+    drawRoute(route);
+  } catch (error) {
+    console.error("Application error:", error);
+  }
+}
 
-    nodes.forEach((node) => {
-      console.log(
-        `${node.id} | ` +
-          `${node.type} | ` +
-          `${node.coordinate.join(", ")} | ` +
-          `Paths: ${node.connectedPaths.join(", ")}`,
-      );
-    });
+// ============================================================
+// MAP READY
+// ============================================================
 
-    // ========================================================
-    // DEBUG GRAPH EDGES
-    // ========================================================
+map.on("load", () => {
+  console.log("Map loaded.");
 
-    console.log("GRAPH EDGES");
-
-    edges.forEach((edge) => {
-      console.log(
-        `${edge.from} → ${edge.to} | ` +
-          `${edge.distance.toFixed(2)}m | ` +
-          `${edge.pathId}`,
-      );
-    });
-
-    console.log("Total edges:", edges.length);
-  })
-
-  .catch((error) => {
-    console.error("ERROR:", error);
-  });
+  loadData();
+});
