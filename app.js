@@ -15,9 +15,15 @@ import { findRoute } from "./routing.js";
 const MAPTILER_KEY = "y3k27rR8H6hT3sAesswC";
 
 const START_POI_NAME = "CS Dept";
-const END_POI_NAME = "CEC";
+const END_POI_NAME = "Mathematics Dept";
 
 const ROUTE_MODE = "vehicle";
+
+const ROUTE_COLORS = {
+  vehicle: "#2263f0",
+  pedestrian: "#60a5fa",
+  marker: "#eb3838",
+};
 
 // ============================================================
 // MAP
@@ -170,8 +176,10 @@ function drawRoute(route) {
     },
 
     paint: {
-      "line-color": "#ef4444",
-      "line-width": 6,
+      "line-color": ROUTE_COLORS.vehicle,
+
+      "line-width": 7,
+
       "line-opacity": 0.95,
     },
   });
@@ -195,12 +203,65 @@ function drawRoute(route) {
     },
 
     paint: {
-      "line-color": "#facc15",
-      "line-width": 6,
+      "line-color": ROUTE_COLORS.pedestrian,
+
+      "line-width": 5,
+
       "line-opacity": 0.95,
-      "line-dasharray": [2, 2],
+
+      "line-dasharray": [1.5, 1.5],
     },
   });
+}
+
+function createNavigationMarker(coordinate, label) {
+  const el = document.createElement("div");
+
+  el.className = "navigation-marker";
+
+  el.innerHTML = `
+    <div class="navigation-marker-dot"></div>
+  `;
+
+  const popup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: true,
+    offset: 14,
+    className: "navigation-popup",
+  }).setText(label);
+
+  const marker = new maplibregl.Marker({
+    element: el,
+    anchor: "center",
+  })
+    .setLngLat(coordinate)
+    .setPopup(popup)
+    .addTo(map);
+
+  return marker;
+}
+
+let startMarker = null;
+let destinationMarker = null;
+
+function drawNavigationMarkers(startPoi, endPoi) {
+  if (startMarker) {
+    startMarker.remove();
+  }
+
+  if (destinationMarker) {
+    destinationMarker.remove();
+  }
+
+  startMarker = createNavigationMarker(
+    startPoi.geometry.coordinates,
+    `Start: ${startPoi.properties.name}`,
+  );
+
+  destinationMarker = createNavigationMarker(
+    endPoi.geometry.coordinates,
+    `Destination: ${endPoi.properties.name}`,
+  );
 }
 
 // ============================================================
@@ -371,6 +432,12 @@ async function loadData() {
     // --------------------------------------------------------
 
     drawRoute(route);
+
+    // --------------------------------------------------------
+    // Draw navigation markers
+    // --------------------------------------------------------
+
+    drawNavigationMarkers(startPoi, endPoi);
   } catch (error) {
     console.error("Application error:", error);
   }
