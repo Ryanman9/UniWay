@@ -20,9 +20,9 @@ const END_POI_NAME = "Mathematics Dept";
 const ROUTE_MODE = "vehicle";
 
 const ROUTE_COLORS = {
-  vehicle: "#f4881f",
-  pedestrian: "#e49444",
-  marker: "#eb3838",
+  vehicle: "#bdf71e",
+  pedestrian: "#bdf71e",
+  marker: "#38eb4a",
 };
 
 // ============================================================
@@ -187,7 +187,7 @@ function drawRoute(route) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": "#ffffff",
-      "line-width": 12,
+      "line-width": 10,
       "line-opacity": 1,
     },
   });
@@ -218,7 +218,7 @@ function drawRoute(route) {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": "#ffffff",
-      "line-width": 10,
+      "line-width": 8,
       "line-opacity": 1,
     },
   });
@@ -262,7 +262,7 @@ function createNavigationMarker(coordinate, label, variant = "end") {
     el.innerHTML = `
       <div class="position-puck-glow"></div>
       <div class="position-puck-arrow">
-        <svg viewBox="0 0 24 24" fill="#ff8a00"><path d="M12 2 L20 20 L12 16 L4 20 Z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#33ff00"><path d="M12 2 L20 20 L12 16 L4 20 Z"/></svg>
       </div>
     `;
   } else {
