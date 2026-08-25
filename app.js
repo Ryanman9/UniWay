@@ -66,30 +66,47 @@ function findPoiByName(pois, searchText) {
 // ============================================================
 
 function createRouteGeoJSON(route) {
-  const vehicleLines = [];
-  const pedestrianLines = [];
+  const vehicleCoordinates = [];
+  const pedestrianCoordinates = [];
 
   route.segments.forEach((segment) => {
     if (!segment.edges || segment.edges.length === 0) {
       return;
     }
 
+    const coordinates = [];
+
     segment.edges.forEach((edge) => {
       if (!edge.coordinates || edge.coordinates.length < 2) {
-        console.warn("Edge has no geometry:", edge.from, edge.to);
-
         return;
       }
 
-      // Keep every edge as its own LineString
-      if (segment.mode === "vehicle") {
-        vehicleLines.push(edge.coordinates);
-      }
+      if (coordinates.length === 0) {
+        coordinates.push(...edge.coordinates);
+      } else {
+        const last = coordinates[coordinates.length - 1];
+        const first = edge.coordinates[0];
 
-      if (segment.mode === "pedestrian") {
-        pedestrianLines.push(edge.coordinates);
+        // Avoid duplicate coordinate at edge connection
+        if (last[0] === first[0] && last[1] === first[1]) {
+          coordinates.push(...edge.coordinates.slice(1));
+        } else {
+          coordinates.push(...edge.coordinates);
+        }
       }
     });
+
+    if (coordinates.length < 2) {
+      return;
+    }
+
+    if (segment.mode === "vehicle") {
+      vehicleCoordinates.push(coordinates);
+    }
+
+    if (segment.mode === "pedestrian") {
+      pedestrianCoordinates.push(coordinates);
+    }
   });
 
   return {
@@ -105,7 +122,7 @@ function createRouteGeoJSON(route) {
 
         geometry: {
           type: "MultiLineString",
-          coordinates: vehicleLines,
+          coordinates: vehicleCoordinates,
         },
       },
 
@@ -118,7 +135,7 @@ function createRouteGeoJSON(route) {
 
         geometry: {
           type: "MultiLineString",
-          coordinates: pedestrianLines,
+          coordinates: pedestrianCoordinates,
         },
       },
     ],
@@ -180,7 +197,7 @@ function drawRoute(route) {
 
       "line-width": 7,
 
-      "line-opacity": 0.95,
+      "line-opacity": 1,
     },
   });
 
