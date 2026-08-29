@@ -1,0 +1,22 @@
+{
+  "name": "uniway-frontend",
+  "version": "1.0.0",
+  "description": "UniWay campus navigation app (Capacitor + TypeScript)",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && esbuild src/main.ts --bundle --outfile=www/dist/app.js --format=esm",
+    "watch": "esbuild src/main.ts --bundle --outfile=www/dist/app.js --format=esm --watch --servedir=www"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/geolocation": "^8.2.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.9.3"
+  }
+}
