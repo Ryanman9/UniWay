@@ -4,18 +4,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <title>UniWay</title>
+
     <link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <div id="view-map">
+    <div id="view-home" class="app-view hidden"></div>
+
+    <div id="view-map" class="app-view hidden">
+
         <div id="map"></div>
+
+        <button id="back-btn" aria-label="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div id="distance-card">
+            <span id="distance-value">--</span>
+            <span id="distance-unit">Km</span>
+        </div>
+
+        <div id="location-banner" class="hidden">
+            <span id="location-banner-text">Turn on location access so we can show where you are.</span>
+            <button id="location-banner-retry">Enable</button>
+        </div>
+
+        <div id="picker-sheet">
+            <div id="picker-summary" class="hidden">
+                <span class="picker-summary-dot start"></span>
+                <span id="picker-summary-text">Start → Destination</span>
+                <span class="picker-summary-dot end"></span>
+                <button id="picker-edit-btn" aria-label="Edit route">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                </button>
+            </div>
+
+            <div id="picker-expanded">
+                <div class="picker-rows">
+                    <div class="picker-row">
+                        <div class="picker-dot start"></div>
+                        <div class="picker-field">
+                            <span class="picker-label">From</span>
+                            <input id="start-input" type="text" placeholder="Choose start" autocomplete="off" />
+                        </div>
+                    </div>
+                    <div class="picker-line"></div>
+                    <div class="picker-row">
+                        <div class="picker-dot end"></div>
+                        <div class="picker-field">
+                            <span class="picker-label">To</span>
+                            <input id="end-input" type="text" placeholder="Choose destination" autocomplete="off" />
+                        </div>
+                    </div>
+                    <button id="swap-btn" aria-label="Swap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5-5 5 5M7 14l5 5 5-5" /></svg>
+                    </button>
+                </div>
+                <ul id="picker-suggestions" class="hidden"></ul>
+                <button id="go-btn" disabled>Find route</button>
+            </div>
+        </div>
+
+        <div id="steps-card">
+            <div id="steps-handle"></div>
+
+            <div class="steps-card-header">
+                <span class="steps-card-eyebrow">Route</span>
+
+                <div class="steps-card-toolbar">
+                    <button id="simulate-btn" class="hidden">▶ Simulate walk</button>
+                    <button id="simulate-drift-btn" class="hidden">↯ Test reroute</button>
+                </div>
+            </div>
+
+            <div id="nav-progress" class="hidden">
+                <div class="nav-progress-top">
+                    <span id="nav-progress-icon" class="nav-progress-icon">↑</span>
+                    <div class="nav-progress-text">
+                        <div id="nav-progress-instruction" class="nav-progress-instruction">Continue straight</div>
+                        <div id="nav-progress-distance" class="nav-progress-distance">-- m</div>
+                    </div>
+                    <button id="nav-progress-done" class="nav-progress-done" aria-label="End navigation">✕</button>
+                </div>
+                <div class="nav-progress-summary">
+                    <span id="nav-progress-remaining">-- left</span>
+                    <span id="nav-progress-eta">-- min</span>
+                </div>
+            </div>
+
+            <ul id="steps-list"></ul>
+        </div>
+
     </div>
 
+    <div id="view-explore" class="app-view hidden"></div>
+
+    <div id="view-profile" class="app-view hidden"></div>
+
+    <nav class="tab-bar">
+        <button class="tab-bar-btn" data-view="home" aria-label="Home">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9M5 10v10h14V10" /></svg>
+            <span>Home</span>
+        </button>
+        <button class="tab-bar-btn" data-view="map" aria-label="University Map">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4z" /><path d="M8 2v16M16 6v16" /></svg>
+            <span>Map</span>
+        </button>
+        <button class="tab-bar-btn" data-view="explore" aria-label="Explore Places">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg>
+            <span>Explore</span>
+        </button>
+        <button class="tab-bar-btn" data-view="profile" aria-label="Profile">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
+            <span>Profile</span>
+        </button>
+    </nav>
+
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+
     <script type="module" src="dist/app.js"></script>
 
 </body>
