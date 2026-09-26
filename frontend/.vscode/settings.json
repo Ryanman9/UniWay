@@ -1,0 +1,8 @@
+{
+  "java.import.exclusions": [
+    "**/node_modules/**"
+  ],
+  "files.watcherExclude": {
+    "**/node_modules/**": true
+  }
+}
