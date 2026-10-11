@@ -13,6 +13,7 @@ export const state = {
   gpsWatchId: null as any,
 
   poisData: null as any,
+  dataSource: null as "api" | "cache" | "bundled" | null,
   selectedStart: null as any,
   selectedEnd: null as any,
   activeField: null as "start" | "end" | null,
