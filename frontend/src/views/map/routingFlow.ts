@@ -10,49 +10,132 @@ import {
 } from "../../graph";
 import { findRoute } from "../../routing";
 import { buildTurnByTurn, attachStepBoundaries, buildRouteTrace } from "../../navigation";
+import { fetchPlaces, fetchGraph } from "../../api";
+import type { PoiCollection, GraphNode, GraphEdge } from "../../types";
 import { drawPOIs, drawNavigationMarkers, enableKeepAwake } from "./mapSetup";
 import { drawRoute } from "./routeDrawing";
 import { collapsePickerSheet } from "./pickerUI";
 import { renderSteps } from "./navigationUI";
 import { resetSimulatorForNewRoute } from "./devSimulator";
 
-export async function loadData(): Promise<void> {
-  try {
-    const [paths, pois] = await Promise.all([
-      fetch("./data/paths.json").then((response) => response.json()),
+type DataSource = "api" | "cache" | "bundled";
 
-      fetch("./data/pois.json").then((response) => response.json()),
-    ]);
+interface LoadedData {
+  places: PoiCollection;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
 
-    console.log("Paths loaded:", paths.features.length);
+const CACHE_KEY = "uniway:map-data:v1";
 
-    console.log("POIs loaded:", pois.features.length);
+function isUsable(data: LoadedData | null | undefined): data is LoadedData {
+  return (
+    !!data &&
+    Array.isArray(data.places?.features) &&
+    data.places.features.length > 0 &&
+    Array.isArray(data.nodes) &&
+    data.nodes.length > 0 &&
+    Array.isArray(data.edges) &&
+    data.edges.length > 0
+  );
+}
 
-    const nodes = buildNodes(paths);
+async function loadFromApi(): Promise<LoadedData> {
+  const [places, graph] = await Promise.all([fetchPlaces(), fetchGraph()]);
+  const data: LoadedData = { places, nodes: graph.nodes, edges: graph.edges };
 
-    const edges = buildEdges(paths, nodes);
-
-    console.log("Nodes:", nodes.length);
-
-    console.log("Edges:", edges.length);
-
-    checkGraphConnectivity(nodes, edges);
-
-    const poiNodes = buildPoiNodes(pois, nodes);
-
-    const poiConnections = connectPoiToGraph(poiNodes, nodes);
-
-    console.log("POI connections:", poiConnections);
-
-    state.graphNodes = nodes;
-    state.graphEdges = edges;
-    state.graphPoiConnections = poiConnections;
-    state.poisData = pois;
-
-    drawPOIs(pois);
-  } catch (error) {
-    console.error("Application error:", error);
+  if (!isUsable(data)) {
+    throw new Error("API returned empty or malformed data.");
   }
+
+  return data;
+}
+
+function readCache(): LoadedData | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+
+    const data = JSON.parse(raw);
+    return isUsable(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: LoadedData): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn("Could not cache map data:", error);
+  }
+}
+
+async function loadFromBundled(): Promise<LoadedData> {
+  const [paths, pois] = await Promise.all([
+    fetch("./data/paths.json").then((response) => response.json()),
+    fetch("./data/pois.json").then((response) => response.json()),
+  ]);
+
+  const nodes = buildNodes(paths);
+  const edges = buildEdges(paths, nodes);
+
+  return { places: pois, nodes, edges };
+}
+
+function applyData(data: LoadedData, source: DataSource): void {
+  const { places, nodes, edges } = data;
+
+  console.log(`Map data source: ${source}`);
+  console.log("POIs:", places.features.length);
+  console.log("Nodes:", nodes.length);
+  console.log("Edges:", edges.length);
+
+  checkGraphConnectivity(nodes, edges);
+
+  const poiNodes = buildPoiNodes(places, nodes);
+  const poiConnections = connectPoiToGraph(poiNodes, nodes);
+
+  state.graphNodes = nodes;
+  state.graphEdges = edges;
+  state.graphPoiConnections = poiConnections;
+  state.poisData = places;
+  state.dataSource = source;
+
+  drawPOIs(places);
+}
+
+export async function loadData(): Promise<void> {
+  let data: LoadedData | null = null;
+  let source: DataSource | null = null;
+
+  try {
+    data = await loadFromApi();
+    source = "api";
+    writeCache(data);
+  } catch (error) {
+    console.warn("API load failed, trying cache:", error);
+  }
+
+  if (!data) {
+    const cached = readCache();
+    if (cached) {
+      data = cached;
+      source = "cache";
+    }
+  }
+
+  if (!data) {
+    try {
+      data = await loadFromBundled();
+      source = "bundled";
+    } catch (error) {
+      console.error("All data sources failed:", error);
+      return;
+    }
+  }
+
+  applyData(data, source);
 }
 
 function logRouteInfo(route: any, startPoi: any, endPoi: any): void {
