@@ -14,7 +14,7 @@ import { fetchPlaces, fetchGraph } from "../../api";
 import type { PoiCollection, GraphNode, GraphEdge } from "../../types";
 import { drawPOIs, drawNavigationMarkers, enableKeepAwake } from "./mapSetup";
 import { drawRoute } from "./routeDrawing";
-import { collapsePickerSheet } from "./pickerUI";
+import { collapsePickerSheet, refreshGoBtn } from "./pickerUI";
 import { renderSteps } from "./navigationUI";
 import { resetSimulatorForNewRoute } from "./devSimulator";
 
@@ -83,6 +83,31 @@ async function loadFromBundled(): Promise<LoadedData> {
   return { places: pois, nodes, edges };
 }
 
+const dataBanner: Record<string, any> = {};
+let isLoading = false;
+
+export function initDataBanner(): void {
+  dataBanner.el = $("data-banner");
+  dataBanner.text = $("data-banner-text");
+  dataBanner.retry = $("data-banner-retry");
+
+  dataBanner.retry?.addEventListener("click", () => {
+    loadData();
+  });
+}
+
+function setDataBanner(message: string | null): void {
+  if (!dataBanner.el) return;
+
+  if (message === null) {
+    dataBanner.el.classList.add("hidden");
+    return;
+  }
+
+  dataBanner.text.textContent = message;
+  dataBanner.el.classList.remove("hidden");
+}
+
 function applyData(data: LoadedData, source: DataSource): void {
   const { places, nodes, edges } = data;
 
@@ -103,39 +128,56 @@ function applyData(data: LoadedData, source: DataSource): void {
   state.dataSource = source;
 
   drawPOIs(places);
+  refreshGoBtn();
+
+  if (source === "api") {
+    setDataBanner(null);
+  } else if (source === "cache") {
+    setDataBanner("Offline. Showing saved campus data.");
+  } else {
+    setDataBanner("Offline. Showing built-in campus data.");
+  }
 }
 
 export async function loadData(): Promise<void> {
-  let data: LoadedData | null = null;
-  let source: DataSource | null = null;
+  if (isLoading) return;
+  isLoading = true;
 
   try {
-    data = await loadFromApi();
-    source = "api";
-    writeCache(data);
-  } catch (error) {
-    console.warn("API load failed, trying cache:", error);
-  }
+    let data: LoadedData | null = null;
+    let source: DataSource | null = null;
 
-  if (!data) {
-    const cached = readCache();
-    if (cached) {
-      data = cached;
-      source = "cache";
-    }
-  }
-
-  if (!data) {
     try {
-      data = await loadFromBundled();
-      source = "bundled";
+      data = await loadFromApi();
+      source = "api";
+      writeCache(data);
     } catch (error) {
-      console.error("All data sources failed:", error);
-      return;
+      console.warn("API load failed, trying cache:", error);
     }
-  }
 
-  applyData(data, source);
+    if (!data) {
+      const cached = readCache();
+      if (cached) {
+        data = cached;
+        source = "cache";
+      }
+    }
+
+    if (!data) {
+      try {
+        data = await loadFromBundled();
+        source = "bundled";
+      } catch (error) {
+        console.error("All data sources failed:", error);
+        setDataBanner("Couldn't load campus data.");
+        return;
+      }
+    }
+
+    applyData(data, source!);
+  } finally {
+    isLoading = false;
+  }
 }
 
 function logRouteInfo(route: any, startPoi: any, endPoi: any): void {
