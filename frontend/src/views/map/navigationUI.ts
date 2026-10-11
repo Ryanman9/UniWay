@@ -104,7 +104,7 @@ export function endNavigation(): void {
   refs.navProgressEl.classList.add("hidden");
   refs.navProgressEl.classList.remove("arrived", "off-route", "rerouting");
 
-  $("steps-card")?.classList.remove("visible");
+  $("steps-card")?.classList.remove("visible", "collapsed");
   expandPickerSheet();
 
   disableKeepAwake();
@@ -281,6 +281,43 @@ function triggerReroute(coords: any): void {
   updateNavigationProgress(coords);
 }
 
+function initStepsCardDrag(): void {
+  const card = $("steps-card");
+  const handle = $("steps-handle");
+  if (!card || !handle) return;
+
+  let startY = 0;
+  let dragging = false;
+  let moved = false;
+
+  handle.addEventListener("pointerdown", (e: PointerEvent) => {
+    dragging = true;
+    moved = false;
+    startY = e.clientY;
+    handle.setPointerCapture(e.pointerId);
+  });
+
+  handle.addEventListener("pointermove", (e: PointerEvent) => {
+    if (!dragging) return;
+
+    const dy = e.clientY - startY;
+    if (Math.abs(dy) > 24) {
+      moved = true;
+      dragging = false;
+      card.classList.toggle("collapsed", dy > 0);
+    }
+  });
+
+  handle.addEventListener("pointerup", () => {
+    if (dragging && !moved) card.classList.toggle("collapsed");
+    dragging = false;
+  });
+
+  handle.addEventListener("pointercancel", () => {
+    dragging = false;
+  });
+}
+
 export function initNavigationUI(): void {
   refs.navProgressEl = $("nav-progress");
   refs.navProgressIconEl = $("nav-progress-icon");
@@ -291,4 +328,5 @@ export function initNavigationUI(): void {
   refs.navProgressDoneBtn = $("nav-progress-done");
 
   refs.navProgressDoneBtn?.addEventListener("click", endNavigation);
+  initStepsCardDrag();
 }
