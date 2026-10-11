@@ -2,7 +2,7 @@ import { createMap, initLocationBanner } from "./map/mapSetup";
 import { initPickerUI } from "./map/pickerUI";
 import { initNavigationUI } from "./map/navigationUI";
 import { initDevSimulator } from "./map/devSimulator";
-import { loadData } from "./map/routingFlow";
+import { loadData, initDataBanner } from "./map/routingFlow";
 import { initLiveLocation } from "./map/mapSetup";
 import { state } from "./map/state";
 
@@ -16,6 +16,7 @@ export function initMapView(): void {
 
   initLocationBanner();
   initPickerUI();
+  initDataBanner();
   initNavigationUI();
   initDevSimulator();
 
