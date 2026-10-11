@@ -6,7 +6,15 @@ import { runRoute } from "./routingFlow";
 const refs: Record<string, any> = {};
 
 function updateGoBtn(): void {
-  refs.goBtn.disabled = !(state.selectedStart && state.selectedEnd);
+  refs.goBtn.disabled = !(
+    state.graphNodes &&
+    state.selectedStart &&
+    state.selectedEnd
+  );
+}
+
+export function refreshGoBtn(): void {
+  if (refs.goBtn) updateGoBtn();
 }
 
 function renderSuggestions(query: string): void {
