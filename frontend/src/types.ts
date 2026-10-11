@@ -45,6 +45,8 @@ export interface GraphNode {
   coordinate: [number, number];
   isPoi?: boolean;
   poiId?: string;
+  type?: string;
+  connectedPaths?: string[];
 }
 
 export interface GraphEdge {
@@ -53,6 +55,7 @@ export interface GraphEdge {
   type: PathMode;
   distance: number;
   pathId?: string;
+  coordinates?: [number, number][];
 }
 
 export interface ConnectResult {
