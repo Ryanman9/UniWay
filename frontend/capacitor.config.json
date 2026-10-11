@@ -1,5 +1,7 @@
 {
   "appId": "com.uniway.app",
   "appName": "UniWay",
-  "webDir": "www"
+  "webDir": "www",
+  "server": { "cleartext": true },
+  "android": { "allowMixedContent": true }
 }
