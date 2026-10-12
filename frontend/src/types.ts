@@ -103,3 +103,8 @@ export interface Category {
   label: string;
   icon?: string;
 }
+
+export interface PlaceResponse {
+  place: PoiFeature;
+  details: PlaceDetails | null;
+}
