@@ -1,4 +1,10 @@
-import type { PoiCollection, GraphNode, GraphEdge } from "./types";
+import type {
+  PoiCollection,
+  GraphNode,
+  GraphEdge,
+  Category,
+  PlaceResponse,
+} from "./types";
 
 const API_BASE_URL: string =
   typeof __API_BASE_URL__ !== "undefined" ? __API_BASE_URL__ : "http://localhost:4000";
@@ -29,8 +35,26 @@ async function getJson<T>(path: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise
   }
 }
 
-export function fetchPlaces(): Promise<PoiCollection> {
-  return getJson<PoiCollection>("/api/places");
+export interface PlacesQuery {
+  type?: string;
+  q?: string;
+}
+
+export function fetchPlaces(query: PlacesQuery = {}): Promise<PoiCollection> {
+  const params = new URLSearchParams();
+  if (query.type) params.set("type", query.type);
+  if (query.q) params.set("q", query.q);
+
+  const qs = params.toString();
+  return getJson<PoiCollection>(`/api/places${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchCategories(): Promise<Category[]> {
+  return getJson<Category[]>("/api/categories");
+}
+
+export function fetchPlace(placeId: string): Promise<PlaceResponse> {
+  return getJson<PlaceResponse>(`/api/places/${encodeURIComponent(placeId)}`);
 }
 
 export function fetchGraph(): Promise<GraphResponse> {
