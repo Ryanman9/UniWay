@@ -1,5 +1,5 @@
-import { fetchPlaces, fetchCategories } from "../api";
-import type { PoiFeature, Category } from "../types";
+import { fetchPlaces, fetchCategories, fetchPlace, assetUrl } from "../api";
+import type { PoiFeature, Category, PlaceDetails } from "../types";
 
 const CACHE_KEY = "uniway:explore:v1";
 
@@ -120,6 +120,114 @@ function renderList(): void {
   });
 }
 
+let detailRequestId = 0;
+
+function el(tag: string, className?: string, text?: string): HTMLElement {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function section(title: string, content: HTMLElement): HTMLElement {
+  const wrap = el("section", "detail-section");
+  wrap.append(el("h3", "detail-section-title", title), content);
+  return wrap;
+}
+
+function renderDetail(
+  feature: PoiFeature,
+  details: PlaceDetails | null,
+  note: string | null,
+): void {
+  const body = ui.detailBody;
+  body.innerHTML = "";
+
+  const { name, type } = feature.properties;
+  body.append(el("h2", "detail-name", name), el("div", "detail-type", categoryLabel(type)));
+
+  if (note) body.append(el("div", "detail-note", note));
+
+  if (details?.images?.length) {
+    const gallery = el("div", "detail-gallery");
+
+    details.images.forEach((src) => {
+      const img = document.createElement("img");
+      img.src = assetUrl(src);
+      img.alt = name;
+      img.loading = "lazy";
+      img.addEventListener("error", () => img.remove());
+      gallery.appendChild(img);
+    });
+
+    body.append(gallery);
+  }
+
+  const hasContent =
+    !!details &&
+    !!(
+      details.description ||
+      details.history ||
+      details.hours ||
+      details.relatedPeople?.length
+    );
+
+  if (!hasContent) {
+    if (!note) body.append(el("div", "detail-empty", "No details yet."));
+    return;
+  }
+
+  if (details!.description) {
+    body.append(section("About", el("p", "detail-text", details!.description)));
+  }
+
+  if (details!.hours) {
+    body.append(section("Hours", el("p", "detail-text", details!.hours)));
+  }
+
+  if (details!.history) {
+    body.append(section("History", el("p", "detail-text", details!.history)));
+  }
+
+  if (details!.relatedPeople?.length) {
+    const list = el("ul", "detail-people");
+
+    details!.relatedPeople.forEach((person) => {
+      const li = el("li");
+      li.append(el("strong", undefined, person.name), el("span", undefined, ` · ${person.relation}`));
+      list.appendChild(li);
+    });
+
+    body.append(section("Related people", list));
+  }
+}
+
+async function openDetail(placeId: string): Promise<void> {
+  const feature = data.places.find((f) => f.properties.id === placeId);
+  if (!feature) return;
+
+  const requestId = ++detailRequestId;
+
+  ui.detail.classList.remove("hidden");
+  ui.detailBody.scrollTop = 0;
+  renderDetail(feature, null, "Loading…");
+
+  try {
+    const result = await fetchPlace(placeId);
+    if (requestId !== detailRequestId) return;
+    renderDetail(feature, result.details, null);
+  } catch (error) {
+    console.warn("Place details failed:", error);
+    if (requestId !== detailRequestId) return;
+    renderDetail(feature, null, "Details unavailable offline.");
+  }
+}
+
+function closeDetail(): void {
+  detailRequestId++;
+  ui.detail.classList.add("hidden");
+}
+
 async function load(): Promise<void> {
   if (isLoading) return;
   isLoading = true;
@@ -173,6 +281,14 @@ export function initExplore(): void {
       </div>
       <ul id="explore-list" class="explore-list"></ul>
     </div>
+    <div id="explore-detail" class="explore-detail hidden">
+      <div class="explore-detail-bar">
+        <button id="explore-detail-back" aria-label="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+        </button>
+      </div>
+      <div id="explore-detail-body" class="explore-detail-body"></div>
+    </div>
   `;
 
   ui.search = document.getElementById("explore-search");
@@ -181,6 +297,16 @@ export function initExplore(): void {
   ui.statusText = document.getElementById("explore-status-text");
   ui.retry = document.getElementById("explore-retry");
   ui.list = document.getElementById("explore-list");
+
+  ui.detail = document.getElementById("explore-detail");
+  ui.detailBody = document.getElementById("explore-detail-body");
+
+  document.getElementById("explore-detail-back")?.addEventListener("click", closeDetail);
+
+  ui.list.addEventListener("click", (e: Event) => {
+    const item = (e.target as HTMLElement).closest(".explore-item") as HTMLElement | null;
+    if (item?.dataset.placeId) openDetail(item.dataset.placeId);
+  });
 
   ui.search.addEventListener("input", () => {
     data.query = ui.search.value;
