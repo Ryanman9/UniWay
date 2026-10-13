@@ -49,6 +49,10 @@ export function fetchPlaces(query: PlacesQuery = {}): Promise<PoiCollection> {
   return getJson<PoiCollection>(`/api/places${qs ? `?${qs}` : ""}`);
 }
 
+export function assetUrl(path: string): string {
+  return /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
+}
+
 export function fetchCategories(): Promise<Category[]> {
   return getJson<Category[]>("/api/categories");
 }
