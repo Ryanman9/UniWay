@@ -1064,3 +1064,120 @@ body {
     font-size: 14px;
     font-weight: 600;
 }
+
+.explore-detail {
+    position: fixed;
+    inset: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+}
+
+.explore-detail.hidden {
+    display: none;
+}
+
+.explore-detail-bar {
+    flex-shrink: 0;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 8px;
+}
+
+.explore-detail-bar button {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--mist);
+    color: var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.explore-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 20px 32px;
+}
+
+.detail-name {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.detail-type {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detail-note,
+.detail-empty {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--mist);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.detail-gallery {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    margin: 18px -20px 0;
+    padding: 0 20px;
+    scroll-snap-type: x mandatory;
+}
+
+.detail-gallery img {
+    flex-shrink: 0;
+    width: 78%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 14px;
+    background: var(--mist);
+    scroll-snap-align: start;
+}
+
+.detail-section {
+    margin-top: 22px;
+}
+
+.detail-section-title {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.detail-text {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.detail-people {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.detail-people span {
+    color: var(--muted);
+}
