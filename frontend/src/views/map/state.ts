@@ -17,6 +17,7 @@ export const state = {
   selectedStart: null as any,
   selectedEnd: null as any,
   activeField: null as "start" | "end" | null,
+  pendingDestinationId: null as string | null,
 
   graphNodes: null as any,
   graphEdges: null as any,
