@@ -65,6 +65,30 @@ export function expandPickerSheet(): void {
   refs.pickerSheetEl.classList.remove("collapsed");
 }
 
+export function applyPendingDestination(): void {
+  const id = state.pendingDestinationId;
+  if (!id || !state.poisData || !refs.endInput) return;
+
+  state.pendingDestinationId = null;
+
+  const feature = state.poisData.features.find(
+    (f: any) => f.properties?.id === id,
+  );
+  if (!feature) return;
+
+  state.selectedEnd = feature;
+  refs.endInput.value = poiLabel(feature);
+  refs.suggestionsEl.classList.add("hidden");
+
+  expandPickerSheet();
+  updateGoBtn();
+}
+
+export function requestDestination(placeId: string): void {
+  state.pendingDestinationId = placeId;
+  applyPendingDestination();
+}
+
 export function initPickerUI(): void {
   refs.startInput = $("start-input");
   refs.endInput = $("end-input");
