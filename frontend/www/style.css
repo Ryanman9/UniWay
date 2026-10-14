@@ -1181,3 +1181,28 @@ body {
 .detail-people span {
     color: var(--muted);
 }
+
+.explore-detail-footer {
+    flex-shrink: 0;
+    padding: 10px 20px 14px;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+}
+
+#explore-detail-nav {
+    width: 100%;
+    min-height: 48px;
+    border: none;
+    border-radius: 14px;
+    background: var(--lime);
+    color: var(--lime-ink);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#explore-detail-nav:active {
+    background: var(--lime-deep);
+}
