@@ -14,7 +14,7 @@ import { fetchPlaces, fetchGraph } from "../../api";
 import type { PoiCollection, GraphNode, GraphEdge } from "../../types";
 import { drawPOIs, drawNavigationMarkers, enableKeepAwake } from "./mapSetup";
 import { drawRoute } from "./routeDrawing";
-import { collapsePickerSheet, refreshGoBtn } from "./pickerUI";
+import { collapsePickerSheet, refreshGoBtn, applyPendingDestination } from "./pickerUI";
 import { renderSteps } from "./navigationUI";
 import { resetSimulatorForNewRoute } from "./devSimulator";
 
@@ -129,6 +129,7 @@ function applyData(data: LoadedData, source: DataSource): void {
 
   drawPOIs(places);
   refreshGoBtn();
+  applyPendingDestination();
 
   if (source === "api") {
     setDataBanner(null);
