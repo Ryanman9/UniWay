@@ -121,6 +121,7 @@ function renderList(): void {
 }
 
 let detailRequestId = 0;
+let currentDetailId: string | null = null;
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
   const node = document.createElement(tag);
@@ -206,6 +207,8 @@ async function openDetail(placeId: string): Promise<void> {
   const feature = data.places.find((f) => f.properties.id === placeId);
   if (!feature) return;
 
+  currentDetailId = placeId;
+
   const requestId = ++detailRequestId;
 
   ui.detail.classList.remove("hidden");
@@ -288,6 +291,9 @@ export function initExplore(): void {
         </button>
       </div>
       <div id="explore-detail-body" class="explore-detail-body"></div>
+      <div class="explore-detail-footer">
+        <button id="explore-detail-nav">Navigate here</button>
+      </div>
     </div>
   `;
 
@@ -302,6 +308,14 @@ export function initExplore(): void {
   ui.detailBody = document.getElementById("explore-detail-body");
 
   document.getElementById("explore-detail-back")?.addEventListener("click", closeDetail);
+
+  document.getElementById("explore-detail-nav")?.addEventListener("click", () => {
+    if (!currentDetailId) return;
+
+    const placeId = currentDetailId;
+    closeDetail();
+    document.dispatchEvent(new CustomEvent("uniway:navigate-to", { detail: placeId }));
+  });
 
   ui.list.addEventListener("click", (e: Event) => {
     const item = (e.target as HTMLElement).closest(".explore-item") as HTMLElement | null;
