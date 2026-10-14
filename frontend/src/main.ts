@@ -2,6 +2,7 @@ import { initHome } from "./views/home";
 import { initMapView } from "./views/mapView";
 import { initExplore } from "./views/explore";
 import { initProfile } from "./views/profile";
+import { requestDestination } from "./views/map/pickerUI";
 
 type ViewName = "home" | "map" | "explore" | "profile";
 
@@ -41,6 +42,12 @@ function initTabBar(): void {
     });
   });
 }
+
+document.addEventListener("uniway:navigate-to", (e) => {
+  const placeId = (e as CustomEvent<string>).detail;
+  showView("map");
+  requestDestination(placeId);
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   initTabBar();
