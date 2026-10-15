@@ -5,6 +5,7 @@ import { connectDB } from "./config/db";
 import placesRoutes from "./routes/places";
 import graphRoutes from "./routes/graph";
 import categoriesRoutes from "./routes/categories";
+import path from "path";
 
 dotenv.config();
 
@@ -13,6 +14,8 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/uploads", express.static(path.resolve(__dirname, "../public/uploads")));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
