@@ -1,0 +1,31 @@
+[
+  {
+    "placeId": "B001",
+    "description": "Placeholder description for the CS Dept. Replace with real text.",
+    "history": "Placeholder history. Replace with real text.",
+    "hours": "Mon-Sat, 9:00 AM - 5:00 PM",
+    "images": ["/uploads/b001-1.jpg"],
+    "relatedPeople": [
+      { "name": "Sample Person", "relation": "Chairperson" }
+    ]
+  },
+  {
+    "placeId": "B004",
+    "description": "Placeholder description for the Physics Dept. Replace with real text.",
+    "hours": "Mon-Sat, 9:00 AM - 5:00 PM"
+  },
+  {
+    "placeId": "G001",
+    "description": "Placeholder description for the Centenary Gate.",
+    "history": "Placeholder history. Replace with real text.",
+    "images": ["/uploads/g001-1.jpg"]
+  },
+  {
+    "placeId": "C001",
+    "description": "Placeholder description for the CEC. Replace with real text.",
+    "relatedPeople": [
+      { "name": "Sample Person", "relation": "Founder" },
+      { "name": "Another Person", "relation": "Architect" }
+    ]
+  }
+]
