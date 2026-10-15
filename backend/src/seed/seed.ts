@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { PlaceDetails } from "../models/PlaceDetails";
 
 dotenv.config();
 
@@ -26,9 +27,15 @@ function readJson(file: string): any {
   return JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), "utf-8"));
 }
 
+function readPlaceDetails(): any[] {
+  const file = path.resolve(__dirname, "../../src/seed/place-details.json");
+  return JSON.parse(fs.readFileSync(file, "utf-8"));
+}
+
 async function seed(): Promise<void> {
   const pois = readJson("pois.json");
   const paths = readJson("paths.json");
+  const details = readPlaceDetails();
 
   await connectDB();
 
@@ -51,23 +58,35 @@ async function seed(): Promise<void> {
     label: CATEGORY_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1),
   }));
 
+  const knownIds = new Set<string>(places.map((p: any) => p.placeId));
+  const unknown = details.filter((d: any) => !knownIds.has(d.placeId));
+  if (unknown.length > 0) {
+    console.warn(
+      "place-details.json references unknown placeIds:",
+      unknown.map((d: any) => d.placeId),
+    );
+  }
+
   await Promise.all([
     Place.deleteMany({}),
     GraphNode.deleteMany({}),
     GraphEdge.deleteMany({}),
     Category.deleteMany({}),
+    PlaceDetails.deleteMany({}),
   ]);
 
   await Place.insertMany(places);
   await GraphNode.insertMany(nodes);
   await GraphEdge.insertMany(edges);
   await Category.insertMany(categories);
+  await PlaceDetails.insertMany(details);
 
   console.log("Seed complete:");
   console.log(`  places:     ${places.length}`);
   console.log(`  graphNodes: ${nodes.length}`);
   console.log(`  graphEdges: ${edges.length}`);
   console.log(`  categories: ${categories.length}`);
+  console.log(`  details:    ${details.length}`);
 
   await mongoose.disconnect();
 }
