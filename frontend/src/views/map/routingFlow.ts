@@ -1,6 +1,5 @@
 import { state } from "./state";
 import { $ } from "./dom";
-import { ROUTE_MODE } from "./config";
 import {
   buildNodes,
   buildEdges,
@@ -17,6 +16,7 @@ import { drawRoute } from "./routeDrawing";
 import { collapsePickerSheet, refreshGoBtn, applyPendingDestination } from "./pickerUI";
 import { renderSteps } from "./navigationUI";
 import { resetSimulatorForNewRoute } from "./devSimulator";
+import { getSettings } from "../../storage";
 
 type DataSource = "api" | "cache" | "bundled";
 
@@ -215,7 +215,7 @@ export function runRoute(startPoi: any, endPoi: any): void {
     state.graphPoiConnections,
     state.graphNodes,
     state.graphEdges,
-    ROUTE_MODE,
+    getSettings().travelMode,
   );
 
   if (!route) {
