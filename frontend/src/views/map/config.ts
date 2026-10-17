@@ -1,7 +1,5 @@
 export type RouteModeConfig = "vehicle" | "pedestrian";
 
-export const ROUTE_MODE: RouteModeConfig = "vehicle";
-
 export const ROUTE_COLORS = {
   vehicle: "#0a0d01",
   pedestrian: "#1d2704",
