@@ -1,6 +1,7 @@
 import { state } from "./state";
 import { $ } from "./dom";
 import { updateNavigationProgress } from "./navigationUI";
+import { getSettings } from "../../storage";
 
 export function createMap(): void {
   state.Geolocation = window.Capacitor?.Plugins?.Geolocation ?? null;
@@ -141,6 +142,8 @@ export function updateGpsPuck(coords: any): void {
 }
 
 export async function enableKeepAwake(): Promise<void> {
+  if (!getSettings().keepAwake) return;
+  
   try {
     await state.KeepAwake?.keepAwake();
   } catch (error) {
