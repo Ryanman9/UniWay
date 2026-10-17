@@ -1,5 +1,6 @@
 import { fetchPlaces, fetchCategories, fetchPlace, assetUrl } from "../api";
 import type { PoiFeature, Category, PlaceDetails } from "../types";
+import { toggleFavorite, isFavorite } from "../storage";
 
 const CACHE_KEY = "uniway:explore:v1";
 
@@ -208,6 +209,7 @@ async function openDetail(placeId: string): Promise<void> {
   if (!feature) return;
 
   currentDetailId = placeId;
+  updateFavButton();
 
   const requestId = ++detailRequestId;
 
@@ -229,6 +231,12 @@ async function openDetail(placeId: string): Promise<void> {
 function closeDetail(): void {
   detailRequestId++;
   ui.detail.classList.add("hidden");
+}
+
+function updateFavButton(): void {
+  const saved = !!currentDetailId && isFavorite(currentDetailId);
+  ui.fav.classList.toggle("active", saved);
+  ui.fav.setAttribute("aria-label", saved ? "Remove from saved places" : "Save place");
 }
 
 async function load(): Promise<void> {
@@ -289,6 +297,9 @@ export function initExplore(): void {
         <button id="explore-detail-back" aria-label="Back">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
         </button>
+        <button id="explore-detail-fav" aria-label="Save place">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+        </button>
       </div>
       <div id="explore-detail-body" class="explore-detail-body"></div>
       <div class="explore-detail-footer">
@@ -306,6 +317,18 @@ export function initExplore(): void {
 
   ui.detail = document.getElementById("explore-detail");
   ui.detailBody = document.getElementById("explore-detail-body");
+
+  ui.fav = document.getElementById("explore-detail-fav");
+
+  ui.fav.addEventListener("click", () => {
+  const feature = data.places.find((f) => f.properties.id === currentDetailId);
+  if (!feature) return;
+    const { id, name, type } = feature.properties;
+    toggleFavorite({ id, name, category: categoryLabel(type) });
+    updateFavButton();
+  });
+
+  document.addEventListener("uniway:favorites-changed", updateFavButton);
 
   document.getElementById("explore-detail-back")?.addEventListener("click", closeDetail);
 
