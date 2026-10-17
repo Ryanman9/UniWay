@@ -6,7 +6,6 @@ import {
   SIMULATOR_DRIFT_METERS,
   SIMULATOR_DRIFT_DURATION_MS,
   FALLBACK_SPEED_MPS,
-  ROUTE_MODE,
 } from "./config";
 import { coordinateAtDistance } from "../../navigation";
 import { updateGpsPuck } from "./mapSetup";
@@ -59,7 +58,7 @@ export function startRouteSimulation(): void {
   refs.simulateBtn.textContent = "■ Stop simulation";
   refs.simulateDriftBtn?.classList.remove("hidden");
 
-  const baseSpeed = FALLBACK_SPEED_MPS[ROUTE_MODE];
+  const baseSpeed = FALLBACK_SPEED_MPS[state.activeRoute.mode];
   const simSpeed = baseSpeed * SIMULATOR_SPEED_MULTIPLIER;
   const distancePerTick = simSpeed * (SIMULATOR_TICK_MS / 1000);
 
