@@ -5,7 +5,6 @@ import {
   ARRIVAL_THRESHOLD_METERS,
   OFF_ROUTE_THRESHOLD_METERS,
   FALLBACK_SPEED_MPS,
-  ROUTE_MODE,
   OFF_ROUTE_TRIGGER_STREAK,
   REROUTE_COOLDOWN_MS,
 } from "./config";
@@ -149,7 +148,7 @@ export function updateNavigationProgress(coords: any): void {
   const speed =
     coords.speed && coords.speed > 0.3
       ? coords.speed
-      : FALLBACK_SPEED_MPS[ROUTE_MODE];
+      : FALLBACK_SPEED_MPS[state.activeRoute.mode];
   const etaSeconds = remainingDistance / speed;
 
   const offRoute = projection.offRouteDistance > OFF_ROUTE_THRESHOLD_METERS;
